@@ -13,9 +13,8 @@ impl ZLAYER {
 	pub const CAMERA: f32 = 4.0;
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-enum CollisionH { Left, Right }
-enum CollisionV { Top, Bottom }
+#[derive(Debug, PartialEq, Eq, Copy, Clone)] enum CollisionH { Left, Right }
+#[derive(Debug, PartialEq, Eq, Copy, Clone)] enum CollisionV { Top, Bottom }
 
 const SIN_OF_45: f32 = 0.70710678118654752440084436210485;
 
@@ -82,12 +81,14 @@ fn main() {
 #[derive(Component)] struct Ball;
 #[derive(Component, Deref, DerefMut)] struct Velocity(Vec2);
 #[derive(Component)] struct Collider;
-#[derive(Event, Default)] struct CollisionEvent;
 #[derive(Component)] struct ScoreboardUi;
 #[derive(Component)] struct AdaptiveResolution;
 #[derive(Component)] struct Player;
 #[derive(Component)] struct Ai;
 //#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+
+// Events
+#[derive(Event, Default)] struct CollisionEvent;
 
 // Bundles
 #[derive(Bundle)] struct PaddleBundle {
@@ -276,6 +277,8 @@ fn check_ball_collisions(
     mut collision_events: EventWriter<CollisionEvent>,
 ) {
 	let (mut ball_velocity, ball_transform) = ball_query.single_mut();
+
+	// collide with walls
 	let mut maybe_collision = collide_with_walls(Aabb2d::new(ball_transform.translation.xy(), BALL_SIZE / 2.0));
 
 	// process scoreboard
@@ -285,6 +288,7 @@ fn check_ball_collisions(
 		None => ()
 	}
 
+	// collide with colliders
 	for transform in &collider_query
 	{
 		let (collision_h, collision_v) = collide_with_collider(
@@ -296,6 +300,7 @@ fn check_ball_collisions(
 		if collision_v.is_some() { maybe_collision.1 = collision_v; }
 	}
 
+	// change velocity
 	let mut collision_detected = false;
 	
 	if let Some(collision_h) = maybe_collision.0 {
@@ -318,6 +323,7 @@ fn check_ball_collisions(
 		if reflect_y { ball_velocity.y = -ball_velocity.y; }
 	}
 
+	// collision event
 	if collision_detected {
 		collision_events.send_default();
 	}
@@ -365,11 +371,9 @@ fn play_collision_sound(
 ) {
     // Play a sound once per frame if a collision occurred.
     if !collision_events.is_empty() {
-        // This prevents events staying active on the next frame.
         collision_events.clear();
         commands.spawn(AudioBundle {
             source: sound.0.clone(),
-            // auto-despawn the entity when playback finishes
             settings: PlaybackSettings::DESPAWN,
         });
     }
