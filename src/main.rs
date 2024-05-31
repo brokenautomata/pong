@@ -278,6 +278,13 @@ fn check_ball_collisions(
 	let (mut ball_velocity, ball_transform) = ball_query.single_mut();
 	let mut maybe_collision = collide_with_walls(Aabb2d::new(ball_transform.translation.xy(), BALL_SIZE / 2.0));
 
+	// process scoreboard
+	match maybe_collision.0 {
+		Some(CollisionH::Left)  => scoreboard.score_right += 1,
+		Some(CollisionH::Right) => scoreboard.score_left += 1,
+		None => ()
+	}
+
 	for transform in &collider_query
 	{
 		let (collision_h, collision_v) = collide_with_collider(
