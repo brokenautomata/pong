@@ -1,7 +1,10 @@
 use bevy::{
-	core_pipeline::{bloom::{BloomCompositeMode, BloomSettings}, tonemapping::Tonemapping, }, ecs::query, math::{bounding::{Aabb2d, BoundingCircle, BoundingVolume, IntersectsVolume}, vec2}, prelude::*, render::camera::ScalingMode, scene::ron::to_string, sprite::{MaterialMesh2dBundle, Mesh2dHandle}, transform, window::WindowResized
+	prelude::*,
+	render::camera::ScalingMode,
+	core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping, },
+	math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume},
+	sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
-use bevy_editor_pls::prelude::*;
 
 #[non_exhaustive]
 struct ZLAYER;
@@ -18,12 +21,6 @@ impl ZLAYER {
 
 const SIN_OF_45: f32 = 0.70710678118654752440084436210485;
 
-// #[inline]
-// #[must_use]
-// fn from_angle(angle: f32) -> Self {
-// 	let (sin, cos) = math::sin_cos(angle);
-// 	Self { x: cos, y: sin }
-// }
 
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
@@ -54,13 +51,11 @@ const BACKGROUND_COLOR: Color = Color::BLACK;
 const SPACE_COLOR: Color = Color::DARK_GRAY;
 const PADDLE_COLOR: Color = Color::RED;
 const BALL_COLOR: Color = Color::RED;
-const TITLE_COLOR: Color = Color::YELLOW;
 const SCORE_COLOR: Color = Color::GRAY;
 
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
-		// .add_plugins(EditorPlugin::default()) // for debugging
 		.insert_resource(Scoreboard { score_left: 0, score_right: 0 })
 		.insert_resource(ClearColor(BACKGROUND_COLOR))
 		.add_event::<CollisionEvent>()
@@ -85,7 +80,6 @@ fn main() {
 #[derive(Component)] struct AdaptiveResolution;
 #[derive(Component)] struct Player;
 #[derive(Component)] struct Ai;
-//#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 
 // Events
 #[derive(Event, Default)] struct CollisionEvent;
@@ -123,8 +117,6 @@ impl BallBundle {
 
 // Resources
 #[derive(Resource)] struct Scoreboard { score_left: usize, score_right: usize }
-#[derive(Resource)] struct MainCamera { id: Entity }
-#[derive(Resource)] struct TextScale { scale: f32 }
 #[derive(Resource)] struct CollisionSound(Handle<AudioSource>);
 
 fn setup(
