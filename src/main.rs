@@ -1,3 +1,4 @@
+use std::time::Duration;
 use bevy::{
 	prelude::*,
 	render::camera::ScalingMode,
@@ -18,6 +19,13 @@ impl ZLAYER {
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)] enum CollisionH { Left, Right }
 #[derive(Debug, PartialEq, Eq, Copy, Clone)] enum CollisionV { Top, Bottom }
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash)] enum GameplayState {
+	Load,
+	Ready,
+	Active,
+	BallReset,
+	Win,
+}
 
 const SIN_OF_45: f32 = 0.70710678118654752440084436210485;
 
@@ -34,7 +42,6 @@ const PADDLE_PADDING: f32 = 10.0; // How close can the paddle get to the wall
 const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, 0.0, ZLAYER::BALL);
 const BALL_SIZE: Vec2 = Vec2::new(10.0, 10.0);
 const BALL_SPEED: f32 = 400.0;
-const INITIAL_BALL_DIRECTION: Vec2 = Vec2::new(SIN_OF_45, SIN_OF_45);
 
 const DEACCELERATION_DISTANCE: f32 = 50.0;
 const SPACE_SIZE: Vec2 = Vec2::new(640.0, 480.0);
@@ -53,22 +60,55 @@ const PADDLE_COLOR: Color = Color::RED;
 const BALL_COLOR: Color = Color::RED;
 const SCORE_COLOR: Color = Color::GRAY;
 
+const START_DELAY: Duration      = Duration::from_secs(3);
+const BALL_RESET_DELAY: Duration = Duration::from_secs(1);
+const WIN_DELAY: Duration        = Duration::from_secs(3);
+
 fn main() {
-	App::new()
-		.add_plugins(DefaultPlugins)
-		.insert_resource(Scoreboard { score_left: 0, score_right: 0 })
+	let mut app = App::new();
+	
+	// Plugins
+	app.add_plugins(DefaultPlugins);
+
+	// States
+	app.insert_state(GameplayState::Load)
+		.add_systems(PostUpdate, on_switch_state);
+
+	// Events
+	app.add_event::<CollisionEvent>()
+		.add_event::<SwitchStateEvent>();
+
+	// Resources
+	app.insert_resource(Scoreboard { score_left: 0, score_right: 0 })
 		.insert_resource(ClearColor(BACKGROUND_COLOR))
-		.add_event::<CollisionEvent>()
-		.add_systems(Startup, setup)
+		.insert_resource(GameplayStateTimer(Timer::new(Duration::ZERO, TimerMode::Once)));
+
+	// System sets
+
+	// Systems
+	app.add_systems(Startup, setup)
 		.add_systems(FixedUpdate, (
 			player_control,
 			bound_paddle,
 			apply_velocity,
 			check_ball_collisions,
 			play_collision_sound,
-		).chain(),)
-		.add_systems(Update, (update_text_with_scoreboard, bevy::window::close_on_esc))
-		.run();
+		).chain()
+			.run_if(in_state(GameplayState::Ready)
+			.or_else(in_state(GameplayState::Active))
+			.or_else(in_state(GameplayState::BallReset))
+			.or_else(in_state(GameplayState::Win))))
+		.add_systems(Update, tick_timer_on_delay
+			.run_if(in_state(GameplayState::Ready)
+			.or_else(in_state(GameplayState::BallReset))
+			.or_else(in_state(GameplayState::Win))))
+		.add_systems(OnEnter(GameplayState::Active), state_transition_to_active)
+		.add_systems(Update, (
+			update_text_with_scoreboard.run_if(in_state(GameplayState::Active)),
+			bevy::window::close_on_esc
+		));
+	
+	app.run();
 }
 
 // Components
@@ -83,6 +123,12 @@ fn main() {
 
 // Events
 #[derive(Event, Default)] struct CollisionEvent;
+#[derive(Event)] struct SwitchStateEvent { next_state: GameplayState }
+impl SwitchStateEvent {
+	fn new(next_state: GameplayState) -> Self {
+		Self { next_state }
+	}
+}
 
 // Bundles
 #[derive(Bundle)] struct PaddleBundle {
@@ -110,12 +156,13 @@ impl BallBundle {
     fn new() -> Self {
         Self {
             ball: Ball,
-            velocity: Velocity(INITIAL_BALL_DIRECTION * BALL_SPEED),
+            velocity: Velocity(Vec2::ZERO),
         }
     }
 }
 
 // Resources
+#[derive(Resource)] struct GameplayStateTimer(Timer);
 #[derive(Resource)] struct Scoreboard { score_left: usize, score_right: usize }
 #[derive(Resource)] struct CollisionSound(Handle<AudioSource>);
 
@@ -124,6 +171,7 @@ fn setup(
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<ColorMaterial>>,
 	asset_server: Res<AssetServer>,
+	mut switch_state_events: EventWriter<SwitchStateEvent>,
 ) {
 	// Camera
 	commands.spawn((
@@ -189,7 +237,7 @@ fn setup(
 	commands.spawn((
 		ScoreboardUi,
 		Text2dBundle {
-			text: Text::from_section("0 : 0", text_style).with_justify(text_justification),
+			text: Text::from_section("Start", text_style).with_justify(text_justification),
 			transform: Transform::from_xyz(0.0, 0.0, ZLAYER::SCOREBOARD).with_scale(Vec3::splat(SCOREBOARD_SCALE)),
 			..default()
 		},
@@ -204,6 +252,9 @@ fn setup(
 			..default()
 		},
 	));
+
+	// Start game
+	switch_state_events.send(SwitchStateEvent::new(GameplayState::Ready));
 }
 
 fn apply_velocity(
@@ -369,4 +420,46 @@ fn play_collision_sound(
             settings: PlaybackSettings::DESPAWN,
         });
     }
+}
+
+fn on_switch_state(
+	mut switch_state_events: EventReader<SwitchStateEvent>,
+	mut next_game_state: ResMut<NextState<GameplayState>>,
+	mut state_timer: ResMut<GameplayStateTimer>,
+) {
+	let Some(event) = switch_state_events.read().last() else { return; };
+	let state = &event.next_state;
+
+	next_game_state.set(state.clone());	
+	state_timer.0.set_duration(
+		match state {
+			GameplayState::Ready => START_DELAY,
+			GameplayState::BallReset => BALL_RESET_DELAY,
+			GameplayState::Win => WIN_DELAY,
+			_ => Duration::ZERO,
+		}
+	);
+
+	switch_state_events.clear();
+}
+
+fn tick_timer_on_delay(
+	time: Res<Time>,
+	mut state_timer: ResMut<GameplayStateTimer>,
+	mut switch_state_events: EventWriter<SwitchStateEvent>,
+) {
+	state_timer.0.tick(time.delta());
+	if !state_timer.0.finished() { return; }
+	
+	switch_state_events.send(SwitchStateEvent::new(GameplayState::Active));
+}
+
+fn state_transition_to_active(
+	mut ball_query: Query<(&mut Velocity, &mut Transform, &mut Visibility), With<Ball>>,
+) {
+	let (mut ball_velocity, mut ball_transform, mut ball_visibility) = ball_query.single_mut();
+	
+	ball_velocity.0 = Vec2::new(SIN_OF_45, SIN_OF_45) * BALL_SPEED;
+	ball_transform.translation = BALL_STARTING_POSITION;
+	*ball_visibility = Visibility::Inherited;
 }
