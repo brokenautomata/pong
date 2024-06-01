@@ -198,7 +198,7 @@ impl ParagraphBundle {
 
 // Resources
 #[derive(Resource)] struct GameplayStateTimer(Timer);
-#[derive(Resource)] struct Scoreboard { score_left: usize, score_right: usize }
+#[derive(Resource)] struct Scoreboard { score_left: u32, score_right: u32 }
 #[derive(Resource)] struct CollisionSound(Handle<AudioSource>);
 
 fn setup(
