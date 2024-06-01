@@ -496,6 +496,7 @@ fn on_switch_state(
 	let Some(event) = switch_state_events.read().last() else { return; };
 	let state = &event.next_state;
 
+	// Switch to next state and set timer
 	next_game_state.set(state.clone());	
 	state_timer.0.set_duration(
 		match state {
