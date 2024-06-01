@@ -81,7 +81,8 @@ fn main() {
 
 	// States
 	app.insert_state(GameplayState::Load)
-		.add_systems(PostUpdate, on_switch_state);
+		.add_systems(PostUpdate, on_switch_state)
+		.add_systems(OnEnter(GameplayState::Active), state_transition_to_active);
 
 	// Events
 	app.add_event::<CollisionEvent>()
@@ -111,7 +112,6 @@ fn main() {
 			.run_if(in_state(GameplayState::Ready)
 			.or_else(in_state(GameplayState::BallReset))
 			.or_else(in_state(GameplayState::Win))))
-		.add_systems(OnEnter(GameplayState::Active), state_transition_to_active)
 		.add_systems(Update, (
 			update_text_with_scoreboard.run_if(in_state(GameplayState::Active)),
 			bevy::window::close_on_esc
