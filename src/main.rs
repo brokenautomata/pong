@@ -52,11 +52,11 @@ const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, 0.0, ZLAYER::BALL);
 const BALL_SIZE: Vec2              = Vec2::new(10.0, 10.0);
 const BALL_SPEED: f32              = 400.0;
 
-const DEACCELERATION_DISTANCE: f32     = 50.0;
-const SPACE_SIZE: Vec2                 = Vec2::new(640.0, 480.0);
-const SCOREBOARD_RESOLUTION_SCALE: f32 = 4.0;
-const SCOREBOARD_FONT_SIZE: f32        = 40.0 * SCOREBOARD_RESOLUTION_SCALE;
-const SCOREBOARD_SCALE: f32            = 1.0 / SCOREBOARD_RESOLUTION_SCALE;
+const DEACCELERATION_DISTANCE: f32      = 50.0;
+const SPACE_SIZE: Vec2                  = Vec2::new(640.0, 480.0);
+const SCOREBOARD_RESOLUTION_FACTOR: f32 = 4.0;
+const SCOREBOARD_FONT_SIZE: f32         = 40.0 * SCOREBOARD_RESOLUTION_FACTOR;
+const SCOREBOARD_SCALE: f32             = 1.0 / SCOREBOARD_RESOLUTION_FACTOR;
 
 const LEFT_WALL: f32   = -SPACE_SIZE.x / 2.0;
 const RIGHT_WALL: f32  =  SPACE_SIZE.x / 2.0;
