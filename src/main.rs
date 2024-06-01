@@ -2,19 +2,29 @@ use std::time::Duration;
 use bevy::{
 	prelude::*,
 	render::camera::ScalingMode,
-	core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping, },
-	math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume},
-	sprite::{MaterialMesh2dBundle, Mesh2dHandle},
+	core_pipeline::{
+		bloom::BloomSettings,
+		tonemapping::Tonemapping,
+	},
+	math::bounding::{
+		Aabb2d,
+		BoundingVolume,
+		IntersectsVolume,
+	},
+	sprite::{
+		MaterialMesh2dBundle,
+		Mesh2dHandle,
+	},
 };
 
 #[non_exhaustive]
 struct ZLAYER;
 impl ZLAYER {
-	pub const SPACE: f32 = 0.0;
+	pub const SPACE: f32      = 0.0;
     pub const SCOREBOARD: f32 = 1.0;
-    pub const MAIN: f32 = 2.0;
-    pub const BALL: f32 = 3.0;
-	pub const CAMERA: f32 = 4.0;
+    pub const MAIN: f32       = 2.0;
+    pub const BALL: f32       = 3.0;
+	pub const CAMERA: f32     = 4.0;
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)] enum CollisionH { Left, Right }
@@ -29,36 +39,35 @@ impl ZLAYER {
 
 const SIN_OF_45: f32 = 0.70710678118654752440084436210485;
 
-
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
-const PADDLE_SIZE: Vec2 = Vec2::new(10.0, 90.0);
-const PADDLE_OFFSET: f32 = 300.0;
-const PADDLE_SPEED: f32 = 500.0;
+const PADDLE_SIZE: Vec2        = Vec2::new(10.0, 90.0);
+const PADDLE_OFFSET: f32       = 300.0;
+const PADDLE_SPEED: f32        = 500.0;
 const PADDLE_ACCELERATION: f32 = PADDLE_SPEED * 4.0;
-const PADDLE_PADDING: f32 = 10.0; // How close can the paddle get to the wall
+const PADDLE_PADDING: f32      = 10.0; // How close can the paddle get to the wall
 
 // We set the z-value of the ball to 1 so it renders on top in the case of overlapping sprites.
 const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, 0.0, ZLAYER::BALL);
-const BALL_SIZE: Vec2 = Vec2::new(10.0, 10.0);
-const BALL_SPEED: f32 = 400.0;
+const BALL_SIZE: Vec2              = Vec2::new(10.0, 10.0);
+const BALL_SPEED: f32              = 400.0;
 
-const DEACCELERATION_DISTANCE: f32 = 50.0;
-const SPACE_SIZE: Vec2 = Vec2::new(640.0, 480.0);
+const DEACCELERATION_DISTANCE: f32     = 50.0;
+const SPACE_SIZE: Vec2                 = Vec2::new(640.0, 480.0);
 const SCOREBOARD_RESOLUTION_SCALE: f32 = 4.0;
-const SCOREBOARD_FONT_SIZE: f32 = 40.0 * SCOREBOARD_RESOLUTION_SCALE;
-const SCOREBOARD_SCALE: f32 = 1.0 / SCOREBOARD_RESOLUTION_SCALE;
+const SCOREBOARD_FONT_SIZE: f32        = 40.0 * SCOREBOARD_RESOLUTION_SCALE;
+const SCOREBOARD_SCALE: f32            = 1.0 / SCOREBOARD_RESOLUTION_SCALE;
 
-const LEFT_WALL: f32 = -SPACE_SIZE.x / 2.0;   // x
-const RIGHT_WALL: f32 = SPACE_SIZE.x / 2.0;   // x
-const BOTTOM_WALL: f32 = -SPACE_SIZE.y / 2.0; // y
-const TOP_WALL: f32 = SPACE_SIZE.y / 2.0;     // y
+const LEFT_WALL: f32   = -SPACE_SIZE.x / 2.0;
+const RIGHT_WALL: f32  =  SPACE_SIZE.x / 2.0;
+const BOTTOM_WALL: f32 = -SPACE_SIZE.y / 2.0;
+const TOP_WALL: f32    =  SPACE_SIZE.y / 2.0;
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
-const SPACE_COLOR: Color = Color::DARK_GRAY;
-const PADDLE_COLOR: Color = Color::RED;
-const BALL_COLOR: Color = Color::RED;
-const SCORE_COLOR: Color = Color::GRAY;
+const SPACE_COLOR: Color      = Color::DARK_GRAY;
+const PADDLE_COLOR: Color     = Color::RED;
+const BALL_COLOR: Color       = Color::RED;
+const SCORE_COLOR: Color      = Color::GRAY;
 
 const START_DELAY: Duration      = Duration::from_secs(3);
 const BALL_RESET_DELAY: Duration = Duration::from_secs(1);
@@ -136,7 +145,6 @@ impl SwitchStateEvent {
 	collider: Collider,
     velocity: Velocity,
 }
-
 impl PaddleBundle {
     fn new() -> Self {
         Self {
@@ -151,7 +159,6 @@ impl PaddleBundle {
     ball: Ball,
     velocity: Velocity,
 }
-
 impl BallBundle {
     fn new() -> Self {
         Self {
@@ -433,10 +440,10 @@ fn on_switch_state(
 	next_game_state.set(state.clone());	
 	state_timer.0.set_duration(
 		match state {
-			GameplayState::Ready => START_DELAY,
+			GameplayState::Ready     => START_DELAY,
 			GameplayState::BallReset => BALL_RESET_DELAY,
-			GameplayState::Win => WIN_DELAY,
-			_ => Duration::ZERO,
+			GameplayState::Win       => WIN_DELAY,
+			_                        => Duration::ZERO,
 		}
 	);
 
