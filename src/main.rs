@@ -103,7 +103,7 @@ fn main() {
 			bound_paddle,
 			apply_velocity,
 			check_ball_collisions,
-			play_collision_sound,
+			on_collision_play_sound,
 		).chain()
 			.run_if(in_state(GameplayState::Ready)
 			.or_else(in_state(GameplayState::Active))
@@ -415,7 +415,7 @@ fn collide_with_collider(ball: Aabb2d, collider: Aabb2d) -> (Option<CollisionH>,
 	side
 }
 
-fn play_collision_sound(
+fn on_collision_play_sound(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
     sound: Res<CollisionSound>,
