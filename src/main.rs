@@ -20,11 +20,11 @@ use bevy::{
 #[non_exhaustive]
 struct ZLAYER;
 impl ZLAYER {
-	pub const SPACE: f32      = 0.0;
-    pub const SCOREBOARD: f32 = 1.0;
-    pub const MAIN: f32       = 2.0;
-    pub const BALL: f32       = 3.0;
-	pub const CAMERA: f32     = 4.0;
+	pub const SPACE: f32  = 0.0;
+    pub const TEXT: f32   = 1.0;
+    pub const MAIN: f32   = 2.0;
+    pub const BALL: f32   = 3.0;
+	pub const CAMERA: f32 = 4.0;
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)] enum CollisionH { Left, Right }
@@ -55,9 +55,6 @@ const BALL_SPEED: f32              = 400.0;
 
 const DEACCELERATION_DISTANCE: f32      = 50.0;
 const SPACE_SIZE: Vec2                  = Vec2::new(640.0, 480.0);
-const SCOREBOARD_RESOLUTION_FACTOR: f32 = 4.0;
-const SCOREBOARD_FONT_SIZE: f32         = 40.0 * SCOREBOARD_RESOLUTION_FACTOR;
-const SCOREBOARD_SCALE: f32             = 1.0 / SCOREBOARD_RESOLUTION_FACTOR;
 
 const LEFT_WALL: f32   = -SPACE_SIZE.x / 2.0;
 const RIGHT_WALL: f32  =  SPACE_SIZE.x / 2.0;
@@ -68,11 +65,21 @@ const BACKGROUND_COLOR: Color = Color::BLACK;
 const SPACE_COLOR: Color      = Color::DARK_GRAY;
 const PADDLE_COLOR: Color     = Color::RED;
 const BALL_COLOR: Color       = Color::RED;
-const SCORE_COLOR: Color      = Color::GRAY;
+
+const BASIC_TEXT_COLOR: Color  = Color::WHITE;
+const SCORE_TEXT_COLOR: Color  = Color::GRAY;
+const WINNER_TEXT_COLOR: Color = Color::GREEN;
 
 const START_DELAY: Duration      = Duration::from_secs(3);
 const BALL_RESET_DELAY: Duration = Duration::from_secs(1);
 const WIN_DELAY: Duration        = Duration::from_secs(3);
+
+const TEXT_RESOLUTION: f32        = 4.0;
+const GLOBAL_TEXT_SCALE: f32      = 1.0 / TEXT_RESOLUTION;
+const INSTRUCTIONS_FONT_SIZE: f32 = 30.0 * TEXT_RESOLUTION;
+const READY_FONT_SIZE: f32        = 40.0 * TEXT_RESOLUTION;
+const SCOREBOARD_FONT_SIZE: f32   = 50.0 * TEXT_RESOLUTION;
+const WINNER_FONT_SIZE: f32       = 40.0 * TEXT_RESOLUTION;
 
 fn main() {
 	let mut app = App::new();
@@ -130,6 +137,7 @@ fn main() {
 #[derive(Component)] struct AdaptiveResolution;
 #[derive(Component)] struct Player;
 #[derive(Component)] struct Ai;
+#[derive(Component)] struct Paragraph { when_visible: GameplayState }
 
 // Events
 #[derive(Event, Default)] struct CollisionEvent;
@@ -165,6 +173,25 @@ impl BallBundle {
         Self {
             ball: Ball,
             velocity: Velocity(Vec2::ZERO),
+        }
+    }
+}
+
+#[derive(Bundle)] struct ParagraphBundle {
+    information: Paragraph,
+    text_bundle: Text2dBundle,
+}
+impl ParagraphBundle {
+    fn new(state: GameplayState, position: Vec2, text: Text) -> Self {
+        Self {
+			information: Paragraph { when_visible: state },
+			text_bundle: Text2dBundle {
+				text: text,
+				visibility: Visibility::Hidden,
+				transform: Transform::from_xyz(position.x, position.y, ZLAYER::TEXT)
+				.with_scale(Vec3::splat(GLOBAL_TEXT_SCALE)),
+				..default()
+			},
         }
     }
 }
@@ -238,18 +265,46 @@ fn setup(
 		},
 	));
 
-	// Scoreboard
+	// Paragraphs
 	let font = asset_server.load("fonts/FiraSans-Bold.ttf");
-	let text_justification = JustifyText::Center;
-	let text_style = TextStyle { font: font.clone(), font_size: SCOREBOARD_FONT_SIZE, color: SCORE_COLOR };
+	commands.spawn(ParagraphBundle::new(
+		GameplayState::Instructions,
+		Vec2::new(0.0, 0.0),
+		Text::from_section("Enter space to start", TextStyle {
+			font: font.clone(),
+			font_size: INSTRUCTIONS_FONT_SIZE,
+			color: BASIC_TEXT_COLOR })
+			.with_justify(JustifyText::Center),
+		));
+	commands.spawn(ParagraphBundle::new(
+		GameplayState::Ready,
+		Vec2::new(0.0, -50.0),
+		Text::from_section("Ready?", TextStyle {
+			font: font.clone(),
+			font_size: READY_FONT_SIZE,
+			color: BASIC_TEXT_COLOR })
+			.with_justify(JustifyText::Center),
+		));
 	commands.spawn((
 		ScoreboardUi,
-		Text2dBundle {
-			text: Text::from_section("Start", text_style).with_justify(text_justification),
-			transform: Transform::from_xyz(0.0, 0.0, ZLAYER::SCOREBOARD).with_scale(Vec3::splat(SCOREBOARD_SCALE)),
-			..default()
-		},
-	));
+		ParagraphBundle::new(
+			GameplayState::Active,
+			Vec2::new(0.0, 0.0),
+			Text::from_section("0:0", TextStyle {
+				font: font.clone(),
+				font_size: SCOREBOARD_FONT_SIZE,
+				color: SCORE_TEXT_COLOR })
+				.with_justify(JustifyText::Center),
+		)));
+	commands.spawn(ParagraphBundle::new(
+		GameplayState::Winner,
+		Vec2::new(0.0, 0.0),
+		Text::from_section("Winner!", TextStyle {
+			font: font,
+			font_size: WINNER_FONT_SIZE,
+			color: WINNER_TEXT_COLOR })
+			.with_justify(JustifyText::Center),
+		));
 
 	// Background
 	commands.spawn((
@@ -314,8 +369,10 @@ fn update_text_with_scoreboard(
 	scoreboard: Res<Scoreboard>,
 	mut query: Query<&mut Text, With<ScoreboardUi>>,
 ) {
-	let mut text = query.single_mut();
-	text.sections[0].value = format!("{} : {}",
+	let mut binding = query.single_mut(); // panic
+ 	let text_section = binding.sections.first_mut().unwrap(); // panic
+	
+	text_section.value = format!("{} : {}",
 		scoreboard.score_left.to_string(),
 		scoreboard.score_right.to_string(),
 	);
@@ -434,6 +491,7 @@ fn on_switch_state(
 	mut switch_state_events: EventReader<SwitchStateEvent>,
 	mut next_game_state: ResMut<NextState<GameplayState>>,
 	mut state_timer: ResMut<GameplayStateTimer>,
+	mut paragraph_query: Query<(&mut Visibility, &Paragraph)>,
 ) {
 	let Some(event) = switch_state_events.read().last() else { return; };
 	let state = &event.next_state;
@@ -447,6 +505,14 @@ fn on_switch_state(
 			_                        => Duration::ZERO,
 		}
 	);
+
+	// Set visibility for paragraphs
+	for (mut p_visibility, paragraph) in &mut paragraph_query {
+		*p_visibility = match paragraph.when_visible == *state {
+			true  => Visibility::Inherited,
+			false => Visibility::Hidden,
+		};
+	}
 
 	switch_state_events.clear();
 }
