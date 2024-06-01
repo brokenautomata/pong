@@ -31,10 +31,11 @@ impl ZLAYER {
 #[derive(Debug, PartialEq, Eq, Copy, Clone)] enum CollisionV { Top, Bottom }
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash)] enum GameplayState {
 	Load,
+	Instructions,
 	Ready,
 	Active,
 	BallReset,
-	Win,
+	Winner,
 }
 
 const SIN_OF_45: f32 = 0.70710678118654752440084436210485;
@@ -107,11 +108,11 @@ fn main() {
 			.run_if(in_state(GameplayState::Ready)
 			.or_else(in_state(GameplayState::Active))
 			.or_else(in_state(GameplayState::BallReset))
-			.or_else(in_state(GameplayState::Win))))
+			.or_else(in_state(GameplayState::Winner))))
 		.add_systems(Update, tick_timer_on_delay
 			.run_if(in_state(GameplayState::Ready)
 			.or_else(in_state(GameplayState::BallReset))
-			.or_else(in_state(GameplayState::Win))))
+			.or_else(in_state(GameplayState::Winner))))
 		.add_systems(Update, (
 			update_text_with_scoreboard.run_if(in_state(GameplayState::Active)),
 			bevy::window::close_on_esc
@@ -442,7 +443,7 @@ fn on_switch_state(
 		match state {
 			GameplayState::Ready     => START_DELAY,
 			GameplayState::BallReset => BALL_RESET_DELAY,
-			GameplayState::Win       => WIN_DELAY,
+			GameplayState::Winner    => WIN_DELAY,
 			_                        => Duration::ZERO,
 		}
 	);
