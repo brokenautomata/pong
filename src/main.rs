@@ -67,9 +67,9 @@ const SPACE_COLOR: Color      = Color::DARK_GRAY;
 const PADDLE_COLOR: Color     = Color::RED;
 const BALL_COLOR: Color       = Color::RED;
 
-const BASIC_TEXT_COLOR: Color  = Color::WHITE;
-const SCORE_TEXT_COLOR: Color  = Color::GRAY;
-const GAME_OVER_TEXT_COLOR: Color = Color::GREEN;
+const BASIC_TEXT_COLOR: Color     = Color::WHITE;
+const SCORE_TEXT_COLOR: Color     = Color::GRAY;
+const GAME_OVER_TEXT_COLOR: Color = Color::BLACK;
 
 const START_DELAY: Duration     = Duration::from_secs(3);
 const NEXT_SET_DELAY: Duration  = Duration::from_secs(1);
@@ -77,12 +77,12 @@ const GAME_OVER_DELAY: Duration = Duration::from_secs(3);
 
 const TEXT_RESOLUTION: f32        = 4.0;
 const GLOBAL_TEXT_SCALE: f32      = 1.0 / TEXT_RESOLUTION;
-const INSTRUCTIONS_FONT_SIZE: f32 = 30.0 * TEXT_RESOLUTION;
+const INSTRUCTIONS_FONT_SIZE: f32 = 20.0 * TEXT_RESOLUTION;
 const START_FONT_SIZE: f32        = 40.0 * TEXT_RESOLUTION;
-const SCOREBOARD_FONT_SIZE: f32   = 50.0 * TEXT_RESOLUTION;
-const GAME_OVER_FONT_SIZE: f32    = 40.0 * TEXT_RESOLUTION;
+const SCOREBOARD_FONT_SIZE: f32   = 80.0 * TEXT_RESOLUTION;
+const GAME_OVER_FONT_SIZE: f32    = 70.0 * TEXT_RESOLUTION;
 
-const WIN_CONDITIONS: u32 = 7;
+const WIN_CONDITIONS: u32 = 1;
 
 fn main() {
 	let mut app = App::new();
@@ -280,8 +280,8 @@ fn world_setup(
 	let font = asset_server.load("fonts/FiraSans-Bold.ttf");
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::Instructions,
-		Vec2::new(0.0, 0.0),
-		Text::from_section("Use Up and Down arrows to move paddle\nEnter space to start",
+		Vec2::new(0.0, -120.0),
+		Text::from_section("Use 'Up' and 'Down' arrows to move paddle\nEnter space to start game...",
 			TextStyle {
 				font: font.clone(),
 				font_size: INSTRUCTIONS_FONT_SIZE,
@@ -290,8 +290,8 @@ fn world_setup(
 		));
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::Start,
-		Vec2::new(0.0, -50.0),
-		Text::from_section("Ready?", TextStyle {
+		Vec2::new(0.0, -120.0),
+		Text::from_section("Be ready!", TextStyle {
 			font: font.clone(),
 			font_size: START_FONT_SIZE,
 			color: BASIC_TEXT_COLOR })
@@ -302,7 +302,7 @@ fn world_setup(
 		ParagraphBundle::new(
 			GameplayState::Active,
 			Vec2::new(0.0, 0.0),
-			Text::from_section("0:0", TextStyle {
+			Text::from_section("", TextStyle {
 				font: font.clone(),
 				font_size: SCOREBOARD_FONT_SIZE,
 				color: SCORE_TEXT_COLOR })
@@ -311,7 +311,7 @@ fn world_setup(
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::GameOver,
 		Vec2::new(0.0, 0.0),
-		Text::from_section("Winner!", TextStyle {
+		Text::from_section("Game Over", TextStyle {
 			font: font,
 			font_size: GAME_OVER_FONT_SIZE,
 			color: GAME_OVER_TEXT_COLOR })
@@ -384,7 +384,7 @@ fn update_text_with_scoreboard(
 	let mut binding = query.single_mut(); // panic
  	let text_section = binding.sections.first_mut().unwrap(); // panic
 	
-	text_section.value = format!("{} : {}",
+	text_section.value = format!("{}   {}",
 		scoreboard.score_left.to_string(),
 		scoreboard.score_right.to_string(),
 	);
