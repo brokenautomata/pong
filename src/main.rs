@@ -519,6 +519,7 @@ fn on_collision_play_sound(
             settings: PlaybackSettings::DESPAWN,
         });
     }
+}
 
 fn check_win_conditions(
 	scoreboard: Res<Scoreboard>,
