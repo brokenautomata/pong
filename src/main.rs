@@ -98,7 +98,8 @@ fn main() {
 	// Transitions
 	app.add_systems(OnEnter(GameplayState::Active), start_game_set)
 		.add_systems(OnExit(GameplayState::Active), reset_game_set)
-		.add_systems(OnExit(GameplayState::GameOver), reset_scoreboard);
+		.add_systems(OnEnter(GameplayState::GameOver), hide_ball)
+		.add_systems(OnExit(GameplayState::GameOver), (reset_scoreboard, unhide_ball));
 
 	// Events
 	app.add_event::<CollisionEvent>();
@@ -601,4 +602,18 @@ fn reset_game_set(
 	
 	ball_velocity.0 = Vec2::ZERO;
 	ball_transform.translation = BALL_STARTING_POSITION;
+}
+
+fn hide_ball(
+	mut ball_query: Query<&mut Visibility, With<Ball>>,
+) {
+	let mut ball_visibility = ball_query.single_mut();
+	*ball_visibility = Visibility::Hidden;
+}
+
+fn unhide_ball(
+	mut ball_query: Query<&mut Visibility, With<Ball>>,
+) {
+	let mut ball_visibility = ball_query.single_mut();
+	*ball_visibility = Visibility::Inherited;
 }
