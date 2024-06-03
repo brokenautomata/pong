@@ -63,13 +63,13 @@ const BOTTOM_WALL: f32 = -SPACE_SIZE.y / 2.0;
 const TOP_WALL: f32    =  SPACE_SIZE.y / 2.0;
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
-const SPACE_COLOR: Color      = Color::DARK_GRAY;
+const SPACE_COLOR: Color      = Color::BLACK;
 const PADDLE_COLOR: Color     = Color::RED;
 const BALL_COLOR: Color       = Color::RED;
 
 const BASIC_TEXT_COLOR: Color     = Color::WHITE;
-const SCORE_TEXT_COLOR: Color     = Color::GRAY;
-const GAME_OVER_TEXT_COLOR: Color = Color::BLACK;
+const SCORE_TEXT_COLOR: Color     = Color::DARK_GRAY;
+const GAME_OVER_TEXT_COLOR: Color = Color::WHITE;
 
 const START_DELAY: Duration     = Duration::from_secs(3);
 const NEXT_SET_DELAY: Duration  = Duration::from_secs(1);
@@ -78,17 +78,20 @@ const GAME_OVER_DELAY: Duration = Duration::from_secs(3);
 const TEXT_RESOLUTION: f32        = 4.0;
 const GLOBAL_TEXT_SCALE: f32      = 1.0 / TEXT_RESOLUTION;
 const INSTRUCTIONS_FONT_SIZE: f32 = 20.0 * TEXT_RESOLUTION;
-const START_FONT_SIZE: f32        = 40.0 * TEXT_RESOLUTION;
-const SCOREBOARD_FONT_SIZE: f32   = 80.0 * TEXT_RESOLUTION;
-const GAME_OVER_FONT_SIZE: f32    = 70.0 * TEXT_RESOLUTION;
+const START_FONT_SIZE: f32        = 20.0 * TEXT_RESOLUTION;
+const SCOREBOARD_FONT_SIZE: f32   = 100.0 * TEXT_RESOLUTION;
+const GAME_OVER_FONT_SIZE: f32    = 60.0 * TEXT_RESOLUTION;
 
-const WIN_CONDITIONS: u32 = 1;
+const WIN_CONDITIONS: u32 = 7;
+
+// use bevy_editor_pls::prelude::*;
 
 fn main() {
 	let mut app = App::new();
 	
 	// Plugins
 	app.add_plugins(DefaultPlugins);
+	// app.add_plugins(EditorPlugin::default());
 
 	// States
 	app.insert_state(GameplayState::Startup);
@@ -278,22 +281,24 @@ fn world_setup(
 	));
 
 	// Paragraphs
-	let font = asset_server.load("fonts/FiraSans-Bold.ttf");
+	let font_nums   = asset_server.load("fonts/basicallyamono-bold.otf");
+	let font_bold   = asset_server.load("fonts/sundaymasthead.otf");
+	let font_medium = asset_server.load("fonts/openinghourssans.otf");
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::Instructions,
-		Vec2::new(0.0, -120.0),
+		Vec2::new(0.0, -160.0),
 		Text::from_section("Use 'Up' and 'Down' arrows to move paddle\nEnter space to start game...",
 			TextStyle {
-				font: font.clone(),
+				font: font_medium.clone(),
 				font_size: INSTRUCTIONS_FONT_SIZE,
 				color: BASIC_TEXT_COLOR })
 			.with_justify(JustifyText::Center),
 		));
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::Start,
-		Vec2::new(0.0, -120.0),
+		Vec2::new(0.0, -160.0),
 		Text::from_section("Be ready!", TextStyle {
-			font: font.clone(),
+			font: font_medium,
 			font_size: START_FONT_SIZE,
 			color: BASIC_TEXT_COLOR })
 			.with_justify(JustifyText::Center),
@@ -304,7 +309,7 @@ fn world_setup(
 			GameplayState::Active,
 			Vec2::new(0.0, 0.0),
 			Text::from_section("", TextStyle {
-				font: font.clone(),
+				font: font_nums,
 				font_size: SCOREBOARD_FONT_SIZE,
 				color: SCORE_TEXT_COLOR })
 				.with_justify(JustifyText::Center),
@@ -313,7 +318,7 @@ fn world_setup(
 		GameplayState::GameOver,
 		Vec2::new(0.0, 0.0),
 		Text::from_section("Game Over", TextStyle {
-			font: font,
+			font: font_bold,
 			font_size: GAME_OVER_FONT_SIZE,
 			color: GAME_OVER_TEXT_COLOR })
 			.with_justify(JustifyText::Center),
@@ -385,7 +390,7 @@ fn update_text_with_scoreboard(
 	let mut binding = query.single_mut(); // panic
  	let text_section = binding.sections.first_mut().unwrap(); // panic
 	
-	text_section.value = format!("{}   {}",
+	text_section.value = format!("{} {}",
 		scoreboard.score_left.to_string(),
 		scoreboard.score_right.to_string(),
 	);
