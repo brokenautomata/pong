@@ -30,12 +30,12 @@ impl ZLAYER {
 #[derive(Debug, PartialEq, Eq, Copy, Clone)] enum CollisionH { Left, Right }
 #[derive(Debug, PartialEq, Eq, Copy, Clone)] enum CollisionV { Top, Bottom }
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash)] enum GameplayState {
-	Load,
+	Startup,
 	Instructions,
-	Ready,
+	Start,
 	Active,
-	BallReset,
-	Winner,
+	NextSet,
+	GameOver,
 }
 
 const SIN_OF_45: f32 = 0.70710678118654752440084436210485;
@@ -68,18 +68,20 @@ const BALL_COLOR: Color       = Color::RED;
 
 const BASIC_TEXT_COLOR: Color  = Color::WHITE;
 const SCORE_TEXT_COLOR: Color  = Color::GRAY;
-const WINNER_TEXT_COLOR: Color = Color::GREEN;
+const GAME_OVER_TEXT_COLOR: Color = Color::GREEN;
 
-const START_DELAY: Duration      = Duration::from_secs(3);
-const BALL_RESET_DELAY: Duration = Duration::from_secs(1);
-const WIN_DELAY: Duration        = Duration::from_secs(3);
+const START_DELAY: Duration     = Duration::from_secs(3);
+const NEXT_SET_DELAY: Duration  = Duration::from_secs(1);
+const GAME_OVER_DELAY: Duration = Duration::from_secs(3);
 
 const TEXT_RESOLUTION: f32        = 4.0;
 const GLOBAL_TEXT_SCALE: f32      = 1.0 / TEXT_RESOLUTION;
 const INSTRUCTIONS_FONT_SIZE: f32 = 30.0 * TEXT_RESOLUTION;
-const READY_FONT_SIZE: f32        = 40.0 * TEXT_RESOLUTION;
+const START_FONT_SIZE: f32        = 40.0 * TEXT_RESOLUTION;
 const SCOREBOARD_FONT_SIZE: f32   = 50.0 * TEXT_RESOLUTION;
-const WINNER_FONT_SIZE: f32       = 40.0 * TEXT_RESOLUTION;
+const GAME_OVER_FONT_SIZE: f32    = 40.0 * TEXT_RESOLUTION;
+
+const WIN_CONDITIONS: u32 = 7;
 
 fn main() {
 	let mut app = App::new();
@@ -88,9 +90,14 @@ fn main() {
 	app.add_plugins(DefaultPlugins);
 
 	// States
-	app.insert_state(GameplayState::Load)
-		.add_systems(PostUpdate, on_switch_state)
-		.add_systems(OnEnter(GameplayState::Active), state_transition_to_active);
+	app.insert_state(GameplayState::Startup)
+		.add_systems(PostUpdate, on_switch_state);
+
+	// Transitions
+	app.add_systems(OnEnter(GameplayState::Active), reset_game_set)
+		.add_systems(OnEnter(GameplayState::Start), reset_timer::<StartTimer>)
+		.add_systems(OnEnter(GameplayState::NextSet), reset_timer::<NextSetTimer>)
+		.add_systems(OnEnter(GameplayState::GameOver), reset_timer::<GameOverTimer>);
 
 	// Events
 	app.add_event::<CollisionEvent>()
@@ -99,32 +106,43 @@ fn main() {
 	// Resources
 	app.insert_resource(Scoreboard { score_left: 0, score_right: 0 })
 		.insert_resource(ClearColor(BACKGROUND_COLOR))
-		.insert_resource(GameplayStateTimer(Timer::new(Duration::ZERO, TimerMode::Once)));
+		.insert_resource(StartTimer   (Timer::new(START_DELAY,     TimerMode::Once)))
+		.insert_resource(NextSetTimer (Timer::new(NEXT_SET_DELAY,  TimerMode::Once)))
+		.insert_resource(GameOverTimer(Timer::new(GAME_OVER_DELAY, TimerMode::Once)));
 
-	// System sets
+	// Systems: startup
+	app.add_systems(Startup, world_setup);
 
-	// Systems
-	app.add_systems(Startup, setup)
-		.add_systems(FixedUpdate, (
-			player_control,
-			bound_paddle,
-			apply_velocity,
+	// System: update
+	app.add_systems(FixedUpdate,
+		(
+		player_control,
+		bound_paddle,
+		apply_velocity,
+			(
 			check_ball_collisions,
 			on_collision_play_sound,
-		).chain()
-			.run_if(in_state(GameplayState::Ready)
-			.or_else(in_state(GameplayState::Active))
-			.or_else(in_state(GameplayState::BallReset))
-			.or_else(in_state(GameplayState::Winner))))
-		.add_systems(Update, tick_timer_on_delay
-			.run_if(in_state(GameplayState::Ready)
-			.or_else(in_state(GameplayState::BallReset))
-			.or_else(in_state(GameplayState::Winner))))
-		.add_systems(Update, (
-			update_text_with_scoreboard.run_if(in_state(GameplayState::Active)),
-			bevy::window::close_on_esc
+			check_win_conditions,
+			)
+			.chain()
+			.run_if(in_state(GameplayState::Active)),
+		)
+		.chain()
+		.run_if(not(in_state(GameplayState::Startup))
 		));
-	
+
+	// Systems: for each GameplayState
+	app.add_systems(Update,
+		(
+		tick_timer::<StartTimer>   .run_if(in_state(GameplayState::Start)),
+		update_text_with_scoreboard.run_if(in_state(GameplayState::Active)),
+		tick_timer::<NextSetTimer> .run_if(in_state(GameplayState::NextSet)),
+		tick_timer::<GameOverTimer>.run_if(in_state(GameplayState::GameOver)),
+		));
+
+	// Systems: temporarely
+	app.add_systems(Update, bevy::window::close_on_esc);
+
 	app.run();
 }
 
@@ -196,12 +214,28 @@ impl ParagraphBundle {
     }
 }
 
+// Traits
+trait TimerHolder {
+	fn get(&mut self) -> &mut Timer;
+}
+impl TimerHolder for StartTimer {
+	fn get(&mut self) -> &mut Timer { &mut self.0 }
+}
+impl TimerHolder for NextSetTimer {
+	fn get(&mut self) -> &mut Timer { &mut self.0 }
+}
+impl TimerHolder for GameOverTimer {
+	fn get(&mut self) -> &mut Timer { &mut self.0 }
+}
+
 // Resources
-#[derive(Resource)] struct GameplayStateTimer(Timer);
+#[derive(Resource)] struct StartTimer(Timer);
+#[derive(Resource)] struct NextSetTimer(Timer);
+#[derive(Resource)] struct GameOverTimer(Timer);
 #[derive(Resource)] struct Scoreboard { score_left: u32, score_right: u32 }
 #[derive(Resource)] struct CollisionSound(Handle<AudioSource>);
 
-fn setup(
+fn world_setup(
 	mut commands: Commands,
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<ColorMaterial>>,
@@ -277,11 +311,11 @@ fn setup(
 			.with_justify(JustifyText::Center),
 		));
 	commands.spawn(ParagraphBundle::new(
-		GameplayState::Ready,
+		GameplayState::Start,
 		Vec2::new(0.0, -50.0),
 		Text::from_section("Ready?", TextStyle {
 			font: font.clone(),
-			font_size: READY_FONT_SIZE,
+			font_size: START_FONT_SIZE,
 			color: BASIC_TEXT_COLOR })
 			.with_justify(JustifyText::Center),
 		));
@@ -297,12 +331,12 @@ fn setup(
 				.with_justify(JustifyText::Center),
 		)));
 	commands.spawn(ParagraphBundle::new(
-		GameplayState::Winner,
+		GameplayState::GameOver,
 		Vec2::new(0.0, 0.0),
 		Text::from_section("Winner!", TextStyle {
 			font: font,
-			font_size: WINNER_FONT_SIZE,
-			color: WINNER_TEXT_COLOR })
+			font_size: GAME_OVER_FONT_SIZE,
+			color: GAME_OVER_TEXT_COLOR })
 			.with_justify(JustifyText::Center),
 		));
 
@@ -317,7 +351,7 @@ fn setup(
 	));
 
 	// Start game
-	switch_state_events.send(SwitchStateEvent::new(GameplayState::Ready));
+	switch_state_events.send(SwitchStateEvent::new(GameplayState::Start));
 }
 
 fn apply_velocity(
@@ -485,12 +519,24 @@ fn on_collision_play_sound(
             settings: PlaybackSettings::DESPAWN,
         });
     }
+
+fn check_win_conditions(
+	scoreboard: Res<Scoreboard>,
+	mut switch_state_events: EventWriter<SwitchStateEvent>,
+	mut ball_query: Query<(&mut Velocity, &mut Visibility), With<Ball>>,
+) {
+	if scoreboard.score_left < WIN_CONDITIONS && scoreboard.score_right < WIN_CONDITIONS { return; }
+	
+	switch_state_events.send(SwitchStateEvent::new(GameplayState::GameOver));
+	
+	let (mut ball_velocity, mut ball_visibility) = ball_query.single_mut();
+	*ball_visibility = Visibility::Hidden;
+	ball_velocity.0 = Vec2::ZERO;
 }
 
 fn on_switch_state(
 	mut switch_state_events: EventReader<SwitchStateEvent>,
 	mut next_game_state: ResMut<NextState<GameplayState>>,
-	mut state_timer: ResMut<GameplayStateTimer>,
 	mut paragraph_query: Query<(&mut Visibility, &Paragraph)>,
 ) {
 	let Some(event) = switch_state_events.read().last() else { return; };
@@ -498,14 +544,13 @@ fn on_switch_state(
 
 	// Switch to next state and set timer
 	next_game_state.set(state.clone());	
-	state_timer.0.set_duration(
-		match state {
-			GameplayState::Ready     => START_DELAY,
-			GameplayState::BallReset => BALL_RESET_DELAY,
-			GameplayState::Winner    => WIN_DELAY,
-			_                        => Duration::ZERO,
-		}
-	);
+
+	match state {
+		GameplayState::Start    => info!("Timer is set: START_DELAY"),
+		GameplayState::NextSet  => info!("Timer is set: BALL_RESET_DELAY"),
+		GameplayState::GameOver => info!("Timer is set: WIN_DELAY"),
+		_                       => (),
+	};
 
 	// Set visibility for paragraphs
 	for (mut p_visibility, paragraph) in &mut paragraph_query {
@@ -518,18 +563,26 @@ fn on_switch_state(
 	switch_state_events.clear();
 }
 
-fn tick_timer_on_delay(
-	time: Res<Time>,
-	mut state_timer: ResMut<GameplayStateTimer>,
-	mut switch_state_events: EventWriter<SwitchStateEvent>,
+fn reset_timer<T: TimerHolder + Resource>(
+	mut timer: ResMut<T>,
 ) {
-	state_timer.0.tick(time.delta());
-	if !state_timer.0.finished() { return; }
-	
-	switch_state_events.send(SwitchStateEvent::new(GameplayState::Active));
+	timer.get().reset();
 }
 
-fn state_transition_to_active(
+fn tick_timer<T: Resource + TimerHolder>(
+	time: Res<Time>,
+	mut timer: ResMut<T>,
+	mut switch_state_events: EventWriter<SwitchStateEvent>,
+) {
+	timer.get().tick(time.delta());
+	if timer.get().just_finished()
+	{
+		switch_state_events.send(SwitchStateEvent::new(GameplayState::Active));
+	}
+}
+
+fn reset_game_set(
+	mut scoreboard: ResMut<Scoreboard>,
 	mut ball_query: Query<(&mut Velocity, &mut Transform, &mut Visibility), With<Ball>>,
 ) {
 	let (mut ball_velocity, mut ball_transform, mut ball_visibility) = ball_query.single_mut();
@@ -537,4 +590,7 @@ fn state_transition_to_active(
 	ball_velocity.0 = Vec2::new(SIN_OF_45, SIN_OF_45) * BALL_SPEED;
 	ball_transform.translation = BALL_STARTING_POSITION;
 	*ball_visibility = Visibility::Inherited;
+
+	scoreboard.score_left  = 0;
+	scoreboard.score_right = 0;
 }
