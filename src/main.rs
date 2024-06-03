@@ -588,17 +588,17 @@ fn reset_scoreboard(
 }
 
 fn start_game_set(
-	mut ball_query: Query<(&mut Velocity, &mut Transform, &mut Visibility), With<Ball>>,
+	mut ball_query: Query<&mut Velocity, With<Ball>>,
 ) {
-	let (mut ball_velocity, mut ball_transform, mut ball_visibility) = ball_query.single_mut();
+	let mut ball_velocity = ball_query.single_mut();
 	
 	ball_velocity.0 = Vec2::new(SIN_OF_45, SIN_OF_45) * BALL_SPEED;
 }
 
 fn reset_game_set(
-	mut ball_query: Query<(&mut Velocity, &mut Transform, &mut Visibility), With<Ball>>,
+	mut ball_query: Query<(&mut Velocity, &mut Transform), With<Ball>>,
 ) {
-	let (mut ball_velocity, mut ball_transform, mut ball_visibility) = ball_query.single_mut();
+	let (mut ball_velocity, mut ball_transform) = ball_query.single_mut();
 	
 	ball_velocity.0 = Vec2::ZERO;
 	ball_transform.translation = BALL_STARTING_POSITION;
