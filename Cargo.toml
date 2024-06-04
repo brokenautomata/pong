@@ -7,7 +7,7 @@ repository = "https://github.com/foxication/pong"
 [dependencies]
 bevy = { version = "0.13.2", features = ["dynamic_linking"] }
 bevy_editor_pls = "0.8.1"
-# REMEMBER: to remove dynamic_linking before releasing
+bevy_vello = { version = "0.4.2", features = ["svg"] }
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

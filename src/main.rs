@@ -17,6 +17,9 @@ use bevy::{
 		Mesh2dHandle,
 	},
 };
+use std::path::Path;
+use bevy::asset::{embedded_asset, io::AssetSourceId, AssetPath};
+use bevy_vello::{prelude::*, VelloPlugin};
 
 #[non_exhaustive]
 struct ZLAYER;
@@ -63,7 +66,6 @@ const BOTTOM_WALL: f32 = -SPACE_SIZE.y / 2.0;
 const TOP_WALL: f32    =  SPACE_SIZE.y / 2.0;
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
-const SPACE_COLOR: Color      = Color::BLACK;
 const PADDLE_COLOR: Color     = Color::RED;
 const BALL_COLOR: Color       = Color::RED;
 
@@ -84,14 +86,19 @@ const GAME_OVER_FONT_SIZE: f32    = 60.0 * TEXT_RESOLUTION;
 
 const WIN_CONDITIONS: u32 = 7;
 
+const CRATE_NAME: &str = env!("CARGO_PKG_NAME");
+
 // use bevy_editor_pls::prelude::*;
 
 fn main() {
 	let mut app = App::new();
 	
 	// Plugins
-	app.add_plugins(DefaultPlugins);
-	// app.add_plugins(EditorPlugin::default());
+	app.add_plugins(DefaultPlugins)
+		.add_plugins(VelloPlugin);
+
+	// Embedded assets
+	embedded_asset!(app, "../assets/textures/frame.svg");
 
 	// States
 	app.insert_state(GameplayState::Startup);
@@ -316,23 +323,24 @@ fn world_setup(
 		)));
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::GameOver,
-		Vec2::new(0.0, 0.0),
-		Text::from_section("Game Over", TextStyle {
+		Vec2::new(-7.0, 0.0),
+		Text::from_section("GAME OVER", TextStyle {
 			font: font_bold,
 			font_size: GAME_OVER_FONT_SIZE,
 			color: GAME_OVER_TEXT_COLOR })
 			.with_justify(JustifyText::Center),
 		));
 
-	// Background
-	commands.spawn((
-		MaterialMesh2dBundle {
-			mesh: Mesh2dHandle(meshes.add(Rectangle::from_size(SPACE_SIZE))),
-			material: materials.add(SPACE_COLOR),
-			transform: Transform::from_xyz(0.0, 0.0, ZLAYER::SPACE),
-			..default()
-		},
-	));
+	// Frame
+	let path = Path::new(CRATE_NAME).join("embedded/frame.svg");
+	let source = AssetSourceId::from("embedded");
+	let asset_path = AssetPath::from_path(&path).with_source(source);
+	commands.spawn(VelloAssetBundle {
+		vector: asset_server.load(asset_path),
+		debug_visualizations: DebugVisualizations::Hidden,
+		transform: Transform::from_xyz(0.0, 0.0, ZLAYER::SPACE).with_scale(Vec3::splat(1.0)),
+		..default()
+	});
 
 	// Start game
 	commands.run_system(state_switcher.0);
