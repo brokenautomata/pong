@@ -52,8 +52,8 @@ const BALL_STARTING_SPEED: f32     = 400.0;
 const FRAME_SIZE: Vec2 = Vec2::new(640.0, 480.0);
 const LEFT_WALL: f32   = -FRAME_SIZE.x / 2.0;
 const RIGHT_WALL: f32  =  FRAME_SIZE.x / 2.0;
-const BOTTOM_WALL: f32 = -FRAME_SIZE.y / 2.0;
-const TOP_WALL: f32    =  FRAME_SIZE.y / 2.0;
+const BOTTOM_WALL: f32 = -FRAME_SIZE.y / 2.0 + WALL_THICKNESS;
+const TOP_WALL: f32    =  FRAME_SIZE.y / 2.0 - WALL_THICKNESS;
 
 const WALL_THICKNESS: f32     = 6.0;
 const WALL_PUSHING_DEPTH: f32 = 6.0;
@@ -369,8 +369,8 @@ fn bound_paddle(
 	{
 		let paddle_y = paddle_transform.translation.y;
 	
-		let bottom_bound = BOTTOM_WALL + PADDLE_SIZE.y / 2.0 + WALL_THICKNESS;
-		let top_bound    = TOP_WALL    - PADDLE_SIZE.y / 2.0 - WALL_THICKNESS;
+		let bottom_bound = BOTTOM_WALL + PADDLE_SIZE.y / 2.0;
+		let top_bound    = TOP_WALL    - PADDLE_SIZE.y / 2.0;
 	
 		let max_velocity_at_top    = ((top_bound    - paddle_y) / WALL_PUSHING_DEPTH) * PLAYER_MAX_SPEED;
 		let min_velocity_at_bottom = ((bottom_bound - paddle_y) / WALL_PUSHING_DEPTH) * PLAYER_MAX_SPEED;
