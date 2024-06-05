@@ -409,21 +409,17 @@ fn apply_velocity(
 }
 
 fn bound_paddle(
-	mut query: Query<(&mut Transform, &mut Velocity, &Acceleration), With<Paddle>>,
-	time: Res<Time>,
+	mut query: Query<(&mut Transform, &mut Velocity), With<Paddle>>,
 ) {
-	for (mut transform, mut velocity, acceleration) in &mut query
+	for (mut transform, mut velocity) in &mut query
 	{
-		let translation_y = &mut transform.translation.y;
-	
-		const BOTTOM_BOUND: f32 = BOTTOM_WALL + PADDLE_SIZE.y / 2.0;
-		const TOP_BOUND: f32    = TOP_WALL    - PADDLE_SIZE.y / 2.0;
+		const BOUND: f32 = TOP_WALL - PADDLE_SIZE.y / 2.0;
+		let translation_goal_y = transform.translation.y.clamp(-BOUND, BOUND);
+		
+		if transform.translation.y == translation_goal_y { continue }
 
-		let paddle_y_buffer = translation_y.clamp(BOTTOM_BOUND, TOP_BOUND);
-		if paddle_y_buffer != *translation_y {
-			*translation_y = paddle_y_buffer;
-			velocity.0 = Vec2::ZERO;
-		}
+		transform.translation.y = translation_goal_y;
+		velocity.0.y = 0.0;
 	}
 }
 
