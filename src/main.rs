@@ -38,28 +38,29 @@ impl ZLAYER {
 
 const SIN_OF_45: f32 = 0.70710678118654752440084436210485;
 
-const PADDLE_SIZE: Vec2        = Vec2::new(10.0, 90.0);
-const PADDLE_OFFSET: f32       = 300.0;
-const PADDLE_SPEED: f32        = 500.0;
-const PADDLE_ACCELERATION: f32 = PADDLE_SPEED * 4.0;
-const PADDLE_PADDING: f32      = 10.0; // How close can the paddle get to the wall
+const PADDLE_SIZE: Vec2    = Vec2::new(10.0, 90.0);
+const PADDLE_OFFSET_X: f32 = 300.0;
+
+const PLAYER_ACCELERATION: f32   = 2000.0;
+const PLAYER_MAX_SPEED: f32      = 500.0;
+const AI_STARTING_MAX_SPEED: f32 = 500.0;
 
 const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, 0.0, ZLAYER::BALL);
 const BALL_SIZE: Vec2              = Vec2::new(10.0, 10.0);
-const BALL_SPEED: f32              = 400.0;
+const BALL_STARTING_SPEED: f32     = 400.0;
 
-const DEACCELERATION_DISTANCE: f32      = 50.0;
-const FRAME_SIZE: Vec2                  = Vec2::new(640.0, 480.0);
-
+const FRAME_SIZE: Vec2 = Vec2::new(640.0, 480.0);
 const LEFT_WALL: f32   = -FRAME_SIZE.x / 2.0;
 const RIGHT_WALL: f32  =  FRAME_SIZE.x / 2.0;
 const BOTTOM_WALL: f32 = -FRAME_SIZE.y / 2.0;
 const TOP_WALL: f32    =  FRAME_SIZE.y / 2.0;
 
-const BACKGROUND_COLOR: Color = Color::BLACK;
-const PADDLE_COLOR: Color     = Color::RED;
-const BALL_COLOR: Color       = Color::RED;
+const WALL_THICKNESS: f32     = 6.0;
+const WALL_PUSHING_DEPTH: f32 = 6.0;
 
+const BACKGROUND_COLOR: Color     = Color::BLACK;
+const PADDLE_COLOR: Color         = Color::RED;
+const BALL_COLOR: Color           = Color::RED;
 const BASIC_TEXT_COLOR: Color     = Color::WHITE;
 const SCORE_TEXT_COLOR: Color     = Color::DARK_GRAY;
 const GAME_OVER_TEXT_COLOR: Color = Color::WHITE;
@@ -69,14 +70,12 @@ const NEXT_SET_DELAY: Duration  = Duration::from_secs(1);
 
 const TEXT_RESOLUTION: f32        = 4.0;
 const GLOBAL_TEXT_SCALE: f32      = 1.0 / TEXT_RESOLUTION;
-const INSTRUCTIONS_FONT_SIZE: f32 = 20.0 * TEXT_RESOLUTION;
-const START_FONT_SIZE: f32        = 20.0 * TEXT_RESOLUTION;
-const SCORE_FONT_SIZE: f32        = 300.0 * TEXT_RESOLUTION;
-const GAME_OVER_FONT_SIZE: f32    = 60.0 * TEXT_RESOLUTION;
+const INSTRUCTIONS_FONT_SIZE: f32 = TEXT_RESOLUTION * 20.0;
+const START_FONT_SIZE: f32        = TEXT_RESOLUTION * 20.0;
+const SCORE_FONT_SIZE: f32        = TEXT_RESOLUTION * 300.0;
+const GAME_OVER_FONT_SIZE: f32    = TEXT_RESOLUTION * 60.0;
 
 const WIN_CONDITIONS: u32 = 7;
-
-const INITIAL_AI_MAX_VELOCITY: f32 = 500.0;
 
 fn main() {
 	let mut app = App::new();
@@ -278,17 +277,17 @@ fn world_setup(
 		MaterialMesh2dBundle {
 			mesh: Mesh2dHandle(paddle_mesh.clone()),
 			material: paddle_material.clone(),
-			transform: Transform::from_xyz(PADDLE_OFFSET, 0.0, ZLAYER::MAIN),
+			transform: Transform::from_xyz(PADDLE_OFFSET_X, 0.0, ZLAYER::MAIN),
 			..default()
 		},
 	));
 	commands.spawn((
 		PaddleBundle::new(),
-		Ai { max_velocity: INITIAL_AI_MAX_VELOCITY },
+		Ai { max_velocity: AI_STARTING_MAX_SPEED },
 		MaterialMesh2dBundle {
 			mesh: Mesh2dHandle(paddle_mesh),
 			material: paddle_material,
-			transform: Transform::from_xyz(-PADDLE_OFFSET, 0.0, ZLAYER::MAIN),
+			transform: Transform::from_xyz(-PADDLE_OFFSET_X, 0.0, ZLAYER::MAIN),
 			..default()
 		},
 	));
@@ -370,11 +369,11 @@ fn bound_paddle(
 	{
 		let paddle_y = paddle_transform.translation.y;
 	
-		let bottom_bound = BOTTOM_WALL + PADDLE_SIZE.y / 2.0 + PADDLE_PADDING;
-		let top_bound    = TOP_WALL    - PADDLE_SIZE.y / 2.0 - PADDLE_PADDING;
+		let bottom_bound = BOTTOM_WALL + PADDLE_SIZE.y / 2.0 + WALL_THICKNESS;
+		let top_bound    = TOP_WALL    - PADDLE_SIZE.y / 2.0 - WALL_THICKNESS;
 	
-		let max_velocity_at_top    = ((top_bound    - paddle_y) / DEACCELERATION_DISTANCE) * PADDLE_SPEED;
-		let min_velocity_at_bottom = ((bottom_bound - paddle_y) / DEACCELERATION_DISTANCE) * PADDLE_SPEED;
+		let max_velocity_at_top    = ((top_bound    - paddle_y) / WALL_PUSHING_DEPTH) * PLAYER_MAX_SPEED;
+		let min_velocity_at_bottom = ((bottom_bound - paddle_y) / WALL_PUSHING_DEPTH) * PLAYER_MAX_SPEED;
 		paddle_velocity.y = paddle_velocity.y.clamp(min_velocity_at_bottom, max_velocity_at_top);
 	}
 }
@@ -390,8 +389,8 @@ fn player_control(
 	if keyboard_input.pressed(KeyCode::ArrowUp)   { direction_y += 1.0; }
 	if keyboard_input.pressed(KeyCode::ArrowDown) { direction_y -= 1.0; }
 
-	let max_diff = PADDLE_ACCELERATION * time.delta_seconds();
-	let velocity_goal_y = direction_y * PADDLE_SPEED;
+	let max_diff = PLAYER_ACCELERATION * time.delta_seconds();
+	let velocity_goal_y = direction_y * PLAYER_MAX_SPEED;
 	let velocity_diff_y = velocity_goal_y - velocity.y;
 	let delta_velocity_y = velocity_diff_y.clamp(-max_diff, max_diff);
 
@@ -621,7 +620,7 @@ fn start_game_set(
 ) {
 	let mut ball_velocity = ball_query.single_mut();
 	
-	ball_velocity.0 = Vec2::new(SIN_OF_45, SIN_OF_45) * BALL_SPEED;
+	ball_velocity.0 = Vec2::new(SIN_OF_45, SIN_OF_45) * BALL_STARTING_SPEED;
 }
 
 fn reset_game_set(
