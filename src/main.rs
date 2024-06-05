@@ -164,7 +164,6 @@ fn main() {
 #[derive(Component)] struct Paddle;
 #[derive(Component)] struct Ball;
 #[derive(Component, Deref, DerefMut)] struct Velocity(Vec2);
-#[derive(Component, Deref, DerefMut)] struct Acceleration(Vec2);
 #[derive(Component, Deref, DerefMut)] struct MaxSpeed(f32);
 #[derive(Component)] struct Collider;
 #[derive(Component)] struct ScoreboardUi;
@@ -181,7 +180,6 @@ fn main() {
 	paddle: Paddle,
 	collider: Collider,
 	velocity: Velocity,
-	acceleration: Acceleration,
 	max_speed: MaxSpeed,
 }
 impl PaddleBundle {
@@ -190,7 +188,6 @@ impl PaddleBundle {
 			paddle: Paddle,
 			collider: Collider,
 			velocity: Velocity(Vec2::ZERO),
-			acceleration: Acceleration(Vec2::ZERO),
 			max_speed: MaxSpeed(max_speed),
 		}
 	}
@@ -360,21 +357,20 @@ fn world_setup(
 
 fn player_control(
 	keyboard_input: Res<ButtonInput<KeyCode>>,
-	mut query: Query<(&mut Velocity, &mut Acceleration), (With<Paddle>, With<Player>)>,
+	mut query: Query<&mut Velocity, (With<Paddle>, With<Player>)>,
 	time: Res<Time>,
 ) {
-	let (mut velocity, mut acceleration) = query.single_mut();
+	let mut velocity = query.single_mut();
 	
 	let is_up   = keyboard_input.pressed(KeyCode::ArrowUp);
 	let is_down = keyboard_input.pressed(KeyCode::ArrowDown);
 	let direction_y = f32::from(is_up) - f32::from(is_down);
 
+	let max_delta_vel_y  = PLAYER_ACCELERATION * time.delta_seconds();
 	let velocity_goal_y  = direction_y * PLAYER_MAX_SPEED;
 	let delta_velocity_y = velocity_goal_y - velocity.y;
-	let delta_accel_y    = delta_velocity_y / time.delta_seconds();
 
-	acceleration.0 = Vec2::new(0.0, delta_accel_y.clamp(-PLAYER_ACCELERATION, PLAYER_ACCELERATION));
-	velocity.0 += acceleration.0 * time.delta_seconds();
+	velocity.y += delta_velocity_y.clamp(-max_delta_vel_y, max_delta_vel_y);
 }
 
 fn ai_control(
