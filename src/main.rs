@@ -17,8 +17,7 @@ use bevy::{
 		Mesh2dHandle,
 	},
 };
-use std::path::Path;
-use bevy::asset::{embedded_asset, io::AssetSourceId, AssetPath};
+use bevy_embedded_assets::EmbeddedAssetPlugin;
 use bevy_vello::{prelude::*, VelloPlugin};
 
 #[non_exhaustive]
@@ -86,19 +85,17 @@ const GAME_OVER_FONT_SIZE: f32    = 60.0 * TEXT_RESOLUTION;
 
 const WIN_CONDITIONS: u32 = 7;
 
-const CRATE_NAME: &str = env!("CARGO_PKG_NAME");
-
 // use bevy_editor_pls::prelude::*;
 
 fn main() {
 	let mut app = App::new();
 	
 	// Plugins
-	app.add_plugins(DefaultPlugins)
-		.add_plugins(VelloPlugin);
-
-	// Embedded assets
-	embedded_asset!(app, "../assets/textures/frame.svg");
+	app.add_plugins((
+		DefaultPlugins,
+		EmbeddedAssetPlugin::default(),
+		VelloPlugin,
+	));
 
 	// States
 	app.insert_state(GameplayState::Startup);
@@ -249,7 +246,7 @@ fn world_setup(
 	));
 
 	// Sound
-	let ball_collision_sound = asset_server.load("sounds/ball_collision.ogg");
+	let ball_collision_sound = asset_server.load("embedded://sounds/ball_collision.ogg");
 	commands.insert_resource(CollisionSound(ball_collision_sound));
 
 	// Ball
@@ -288,9 +285,9 @@ fn world_setup(
 	));
 
 	// Paragraphs
-	let font_nums   = asset_server.load("fonts/basicallyamono-bold.otf");
-	let font_bold   = asset_server.load("fonts/sundaymasthead.otf");
-	let font_medium = asset_server.load("fonts/openinghourssans.otf");
+	let font_nums   = asset_server.load("embedded://fonts/basicallyamono-bold.otf");
+	let font_bold   = asset_server.load("embedded://fonts/sundaymasthead.otf");
+	let font_medium = asset_server.load("embedded://fonts/openinghourssans.otf");
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::Instructions,
 		Vec2::new(0.0, -160.0),
@@ -332,11 +329,8 @@ fn world_setup(
 		));
 
 	// Frame
-	let path = Path::new(CRATE_NAME).join("embedded/frame.svg");
-	let source = AssetSourceId::from("embedded");
-	let asset_path = AssetPath::from_path(&path).with_source(source);
 	commands.spawn(VelloAssetBundle {
-		vector: asset_server.load(asset_path),
+		vector: asset_server.load("embedded://textures/frame.svg"),
 		debug_visualizations: DebugVisualizations::Hidden,
 		transform: Transform::from_xyz(0.0, 0.0, ZLAYER::SPACE).with_scale(Vec3::splat(1.0)),
 		..default()
