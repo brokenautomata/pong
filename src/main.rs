@@ -18,9 +18,9 @@ use bevy_vello::{prelude::*, VelloPlugin};
 struct ZLAYER;
 impl ZLAYER {
 	pub const FRAME: f32  = 0.0;
-    pub const TEXT: f32   = 1.0;
-    pub const MAIN: f32   = 2.0;
-    pub const BALL: f32   = 3.0;
+	pub const TEXT: f32   = 1.0;
+	pub const MAIN: f32   = 2.0;
+	pub const BALL: f32   = 3.0;
 	pub const CAMERA: f32 = 4.0;
 }
 
@@ -174,40 +174,40 @@ fn main() {
 
 // Bundles
 #[derive(Bundle)] struct PaddleBundle {
-    paddle: Paddle,
+	paddle: Paddle,
 	collider: Collider,
-    velocity: Velocity,
+	velocity: Velocity,
 }
 impl PaddleBundle {
-    fn new() -> Self {
-        Self {
-            paddle: Paddle,
+	fn new() -> Self {
+		Self {
+			paddle: Paddle,
 			collider: Collider,
-            velocity: Velocity(Vec2::ZERO),
-        }
-    }
+			velocity: Velocity(Vec2::ZERO),
+		}
+	}
 }
 
 #[derive(Bundle)] struct BallBundle {
-    ball: Ball,
-    velocity: Velocity,
+	ball: Ball,
+	velocity: Velocity,
 }
 impl BallBundle {
-    fn new() -> Self {
-        Self {
-            ball: Ball,
-            velocity: Velocity(Vec2::ZERO),
-        }
-    }
+	fn new() -> Self {
+		Self {
+			ball: Ball,
+			velocity: Velocity(Vec2::ZERO),
+		}
+	}
 }
 
 #[derive(Bundle)] struct ParagraphBundle {
-    information: Paragraph,
-    text_bundle: Text2dBundle,
+	information: Paragraph,
+	text_bundle: Text2dBundle,
 }
 impl ParagraphBundle {
-    fn new(state: GameplayState, position: Vec2, text: Text) -> Self {
-        Self {
+	fn new(state: GameplayState, position: Vec2, text: Text) -> Self {
+		Self {
 			information: Paragraph { when_visible: state },
 			text_bundle: Text2dBundle {
 				text: text,
@@ -216,8 +216,8 @@ impl ParagraphBundle {
 				.with_scale(Vec3::splat(GLOBAL_TEXT_SCALE)),
 				..default()
 			},
-        }
-    }
+		}
+	}
 }
 
 // Resources
@@ -407,10 +407,10 @@ fn update_text_with_scoreboard(
 fn check_ball_collisions(
 	mut commands: Commands,
 	state_switcher: Res<NextStateSystem>,
-    mut scoreboard: ResMut<Scoreboard>,
-    mut ball_query: Query<(&mut Velocity, &Transform), With<Ball>>,
-    collider_query: Query<&Transform, With<Collider>>,
-    mut collision_events: EventWriter<CollisionEvent>,
+	mut scoreboard: ResMut<Scoreboard>,
+	mut ball_query: Query<(&mut Velocity, &Transform), With<Ball>>,
+	collider_query: Query<&Transform, With<Collider>>,
+	mut collision_events: EventWriter<CollisionEvent>,
 ) {
 	let (mut ball_velocity, ball_transform) = ball_query.single_mut();
 
@@ -470,7 +470,7 @@ fn check_ball_collisions(
 fn collide_with_walls(ball: Aabb2d) -> (Option<CollisionH>, Option<CollisionV>)
 {
 	let mut side = (None, None);
-    if (ball.center().x - ball.half_size().x) <= LEFT_WALL { side.0 = Some(CollisionH::Left); }
+	if (ball.center().x - ball.half_size().x) <= LEFT_WALL { side.0 = Some(CollisionH::Left); }
 	if (ball.center().x + ball.half_size().x) >= RIGHT_WALL { side.0 = Some(CollisionH::Right); }
 	
 	if (ball.center().y - ball.half_size().y) <= BOTTOM_WALL { side.1 = Some(CollisionV::Bottom); }
@@ -486,35 +486,35 @@ fn collide_with_collider(ball: Aabb2d, collider: Aabb2d) -> (Option<CollisionH>,
 	}
 
 	let closest = collider.closest_point(ball.center());
-    let offset = ball.center() - closest; // offset of the ball relative to the closest point
-    let side = if offset.x.abs() > offset.y.abs() {
-        if offset.x < 0. {
+	let offset = ball.center() - closest; // offset of the ball relative to the closest point
+	let side = if offset.x.abs() > offset.y.abs() {
+		if offset.x < 0. {
 			(Some(CollisionH::Right), None)
 		} else {
-            (Some(CollisionH::Left), None)
-        }
-    } else if offset.y > 0. {
+			(Some(CollisionH::Left), None)
+		}
+	} else if offset.y > 0. {
 		(None, Some(CollisionV::Bottom))
 	} else {
-        (None, Some(CollisionV::Top))
-    };
+		(None, Some(CollisionV::Top))
+	};
 
 	side
 }
 
 fn on_collision_play_sound(
-    mut commands: Commands,
-    mut collision_events: EventReader<CollisionEvent>,
-    sound: Res<CollisionSound>,
+	mut commands: Commands,
+	mut collision_events: EventReader<CollisionEvent>,
+	sound: Res<CollisionSound>,
 ) {
-    // Play a sound once per frame if a collision occurred.
-    if !collision_events.is_empty() {
-        collision_events.clear();
-        commands.spawn(AudioBundle {
-            source: sound.0.clone(),
-            settings: PlaybackSettings::DESPAWN,
-        });
-    }
+	// Play a sound once per frame if a collision occurred.
+	if !collision_events.is_empty() {
+		collision_events.clear();
+		commands.spawn(AudioBundle {
+			source: sound.0.clone(),
+			settings: PlaybackSettings::DESPAWN,
+		});
+	}
 }
 
 fn check_win_conditions(scoreboard: Res<Scoreboard>) -> GameplayState {
@@ -632,8 +632,8 @@ fn unhide_ball(
 }
 
 fn toggle_window_mode(input: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut Window>) {
-    if input.just_pressed(KeyCode::F11) {
-        let mut window = windows.single_mut();
+	if input.just_pressed(KeyCode::F11) {
+		let mut window = windows.single_mut();
 
 		window.mode = if matches!(window.mode, WindowMode::Fullscreen) {
 			WindowMode::Windowed
@@ -641,6 +641,6 @@ fn toggle_window_mode(input: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut 
 			WindowMode::Fullscreen
 		};
 
-        info!("WINDOW_MODE: {:?}", window.mode);
-    }
+		info!("WINDOW_MODE: {:?}", window.mode);
+	}
 }
