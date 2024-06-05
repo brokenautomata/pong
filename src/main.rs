@@ -76,6 +76,9 @@ const GAME_OVER_FONT_SIZE: f32    = TEXT_RESOLUTION * 60.0;
 
 const WIN_CONDITIONS: u32 = 7;
 
+const PROJECTION_WIDTH: f32  = FRAME_SIZE.x + 40.0;
+const PROJECTION_HEIGHT: f32 = FRAME_SIZE.y + 40.0;
+
 fn main() {
 	let mut app = App::new();
 	
@@ -242,7 +245,7 @@ fn world_setup(
 	commands.spawn((
 		Camera2dBundle {
 			projection: OrthographicProjection {
-				scaling_mode: ScalingMode::AutoMin { min_width: FRAME_SIZE.x, min_height: FRAME_SIZE.y},
+				scaling_mode: ScalingMode::AutoMin { min_width: PROJECTION_WIDTH, min_height: PROJECTION_HEIGHT},
 				..default()
 			},
 			camera: Camera {
