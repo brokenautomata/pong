@@ -38,8 +38,8 @@ impl ZLAYER {
 
 const SIN_OF_45: f32 = 0.70710678118654752440084436210485;
 
-const PADDLE_SIZE: Vec2    = Vec2::new(10.0, 90.0);
-const PADDLE_OFFSET_X: f32 = 300.0;
+const PADDLE_SIZE: Vec2     = Vec2::new(10.0, 90.0);
+const PADDLE_OFFSET_X: f32  = 300.0;
 
 const PLAYER_ACCELERATION: f32   = 2000.0;
 const PLAYER_MAX_SPEED: f32      = 500.0;
@@ -55,8 +55,7 @@ const RIGHT_WALL: f32  =  FRAME_SIZE.x / 2.0;
 const BOTTOM_WALL: f32 = -FRAME_SIZE.y / 2.0 + WALL_THICKNESS;
 const TOP_WALL: f32    =  FRAME_SIZE.y / 2.0 - WALL_THICKNESS;
 
-const WALL_THICKNESS: f32     = 6.0;
-const WALL_PUSHING_DEPTH: f32 = 6.0;
+const WALL_THICKNESS: f32         = 6.0;
 
 const BACKGROUND_COLOR: Color     = Color::BLACK;
 const PADDLE_COLOR: Color         = Color::RED;
@@ -132,8 +131,9 @@ fn main() {
 		player_control,
 		ai_control,
 		),
-		bound_paddle,
+		limit_velocity,
 		apply_velocity,
+		bound_paddle,
 			(
 			check_ball_collisions,
 			on_collision_play_sound,
@@ -164,11 +164,13 @@ fn main() {
 #[derive(Component)] struct Paddle;
 #[derive(Component)] struct Ball;
 #[derive(Component, Deref, DerefMut)] struct Velocity(Vec2);
+#[derive(Component, Deref, DerefMut)] struct Acceleration(Vec2);
+#[derive(Component, Deref, DerefMut)] struct MaxSpeed(f32);
 #[derive(Component)] struct Collider;
 #[derive(Component)] struct ScoreboardUi;
 #[derive(Component)] struct AdaptiveResolution;
 #[derive(Component)] struct Player;
-#[derive(Component)] struct Ai{ max_velocity: f32 }
+#[derive(Component)] struct Ai;
 #[derive(Component, Deref, DerefMut)] struct Paragraph { when_visible: GameplayState }
 
 // Events
@@ -179,13 +181,17 @@ fn main() {
 	paddle: Paddle,
 	collider: Collider,
 	velocity: Velocity,
+	acceleration: Acceleration,
+	max_speed: MaxSpeed,
 }
 impl PaddleBundle {
-	fn new() -> Self {
+	fn new(max_speed: f32) -> Self {
 		Self {
 			paddle: Paddle,
 			collider: Collider,
 			velocity: Velocity(Vec2::ZERO),
+			acceleration: Acceleration(Vec2::ZERO),
+			max_speed: MaxSpeed(max_speed),
 		}
 	}
 }
@@ -272,7 +278,7 @@ fn world_setup(
 	let paddle_mesh = meshes.add(Rectangle::from_size(PADDLE_SIZE));
 	let paddle_material = materials.add(PADDLE_COLOR);
 	commands.spawn((
-		PaddleBundle::new(),
+		PaddleBundle::new(PLAYER_MAX_SPEED),
 		Player,
 		MaterialMesh2dBundle {
 			mesh: Mesh2dHandle(paddle_mesh.clone()),
@@ -282,8 +288,8 @@ fn world_setup(
 		},
 	));
 	commands.spawn((
-		PaddleBundle::new(),
-		Ai { max_velocity: AI_STARTING_MAX_SPEED },
+		PaddleBundle::new(AI_STARTING_MAX_SPEED),
+		Ai,
 		MaterialMesh2dBundle {
 			mesh: Mesh2dHandle(paddle_mesh),
 			material: paddle_material,
@@ -352,6 +358,46 @@ fn world_setup(
 	commands.run_system(state_switcher.0);
 }
 
+fn player_control(
+	keyboard_input: Res<ButtonInput<KeyCode>>,
+	mut query: Query<(&mut Velocity, &mut Acceleration), (With<Paddle>, With<Player>)>,
+	time: Res<Time>,
+) {
+	let (mut velocity, mut acceleration) = query.single_mut();
+	
+	let is_up   = keyboard_input.pressed(KeyCode::ArrowUp);
+	let is_down = keyboard_input.pressed(KeyCode::ArrowDown);
+	let direction_y = f32::from(is_up) - f32::from(is_down);
+
+	let velocity_goal_y  = direction_y * PLAYER_MAX_SPEED;
+	let delta_velocity_y = velocity_goal_y - velocity.y;
+	let delta_accel_y    = delta_velocity_y / time.delta_seconds();
+
+	acceleration.0 = Vec2::new(0.0, delta_accel_y.clamp(-PLAYER_ACCELERATION, PLAYER_ACCELERATION));
+	velocity.0 += acceleration.0 * time.delta_seconds();
+}
+
+fn ai_control(
+	mut paddle_query: Query<(&Transform, &mut Velocity), (With<Paddle>, With<Ai>)>,
+	ball_query: Query<&Transform, With<Ball>>,
+	time: Res<Time>,
+) {
+	let (paddle_transform, mut paddle_velocity) = paddle_query.single_mut();
+	let ball_transform = ball_query.single();
+	
+	let distance = ball_transform.translation.y - paddle_transform.translation.y;
+	paddle_velocity.y = distance / time.delta_seconds();
+}
+
+fn limit_velocity(
+	mut query: Query<(&mut Velocity, &MaxSpeed)>,
+) {
+	for (mut velocity, max_speed) in &mut query
+	{
+		velocity.0 = velocity.clamp_length_max(max_speed.0);
+	}
+}
+
 fn apply_velocity(
 	mut query: Query<(&mut Transform, &Velocity)>,
 	time: Res<Time>
@@ -363,51 +409,22 @@ fn apply_velocity(
 }
 
 fn bound_paddle(
-	mut query: Query<(&Transform, &mut Velocity), With<Paddle>>,
+	mut query: Query<(&mut Transform, &mut Velocity, &Acceleration), With<Paddle>>,
+	time: Res<Time>,
 ) {
-	for (paddle_transform, mut paddle_velocity) in &mut query
+	for (mut transform, mut velocity, acceleration) in &mut query
 	{
-		let paddle_y = paddle_transform.translation.y;
+		let translation_y = &mut transform.translation.y;
 	
-		let bottom_bound = BOTTOM_WALL + PADDLE_SIZE.y / 2.0;
-		let top_bound    = TOP_WALL    - PADDLE_SIZE.y / 2.0;
-	
-		let max_velocity_at_top    = ((top_bound    - paddle_y) / WALL_PUSHING_DEPTH) * PLAYER_MAX_SPEED;
-		let min_velocity_at_bottom = ((bottom_bound - paddle_y) / WALL_PUSHING_DEPTH) * PLAYER_MAX_SPEED;
-		paddle_velocity.y = paddle_velocity.y.clamp(min_velocity_at_bottom, max_velocity_at_top);
+		const BOTTOM_BOUND: f32 = BOTTOM_WALL + PADDLE_SIZE.y / 2.0;
+		const TOP_BOUND: f32    = TOP_WALL    - PADDLE_SIZE.y / 2.0;
+
+		let paddle_y_buffer = translation_y.clamp(BOTTOM_BOUND, TOP_BOUND);
+		if paddle_y_buffer != *translation_y {
+			*translation_y = paddle_y_buffer;
+			velocity.0 = Vec2::ZERO;
+		}
 	}
-}
-
-fn player_control(
-	keyboard_input: Res<ButtonInput<KeyCode>>,
-	mut query: Query<&mut Velocity, (With<Paddle>, With<Player>)>,
-	time: Res<Time>,
-) {
-	let mut velocity = query.single_mut();
-	let mut direction_y = 0.0;
-
-	if keyboard_input.pressed(KeyCode::ArrowUp)   { direction_y += 1.0; }
-	if keyboard_input.pressed(KeyCode::ArrowDown) { direction_y -= 1.0; }
-
-	let max_diff = PLAYER_ACCELERATION * time.delta_seconds();
-	let velocity_goal_y = direction_y * PLAYER_MAX_SPEED;
-	let velocity_diff_y = velocity_goal_y - velocity.y;
-	let delta_velocity_y = velocity_diff_y.clamp(-max_diff, max_diff);
-
-	velocity.y += delta_velocity_y;
-}
-
-fn ai_control(
-	mut paddle_query: Query<(&Transform, &mut Velocity, &mut Ai), With<Paddle>>,
-	ball_query: Query<&Transform, With<Ball>>,
-	time: Res<Time>,
-) {
-	let (paddle_transform, mut paddle_velocity, mut ai) = paddle_query.single_mut();
-	let ball_transform = ball_query.single();
-	
-	let distance = ball_transform.translation.y - paddle_transform.translation.y;
-	let velocity_goal = distance / time.delta_seconds();
-	paddle_velocity.y = velocity_goal.clamp(-ai.max_velocity, ai.max_velocity);
 }
 
 fn update_text_with_scoreboard(
