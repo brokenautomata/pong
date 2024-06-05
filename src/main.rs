@@ -79,6 +79,8 @@ const GAME_OVER_FONT_SIZE: f32    = 60.0 * TEXT_RESOLUTION;
 
 const WIN_CONDITIONS: u32 = 7;
 
+const INITIAL_AI_MAX_VELOCITY: f32 = 500.0;
+
 // use bevy_editor_pls::prelude::*;
 
 fn main() {
@@ -128,7 +130,10 @@ fn main() {
 	// System: update
 	app.add_systems(FixedUpdate,
 		(
+		(
 		player_control,
+		ai_control,
+		),
 		bound_paddle,
 		apply_velocity,
 			(
@@ -166,7 +171,7 @@ fn main() {
 #[derive(Component)] struct ScoreboardUi;
 #[derive(Component)] struct AdaptiveResolution;
 #[derive(Component)] struct Player;
-#[derive(Component)] struct Ai;
+#[derive(Component)] struct Ai{ max_velocity: f32 }
 #[derive(Component)] struct Paragraph { when_visible: GameplayState }
 
 // Events
@@ -281,7 +286,7 @@ fn world_setup(
 	));
 	commands.spawn((
 		PaddleBundle::new(),
-		Ai,
+		Ai { max_velocity: INITIAL_AI_MAX_VELOCITY },
 		MaterialMesh2dBundle {
 			mesh: Mesh2dHandle(paddle_mesh),
 			material: paddle_material,
@@ -389,6 +394,19 @@ fn player_control(
 	let delta_velocity_y = velocity_diff_y.clamp(-max_diff, max_diff);
 
 	velocity.y += delta_velocity_y;
+}
+
+fn ai_control(
+	mut paddle_query: Query<(&Transform, &mut Velocity, &mut Ai), With<Paddle>>,
+	ball_query: Query<&Transform, With<Ball>>,
+	time: Res<Time>,
+) {
+	let (paddle_transform, mut paddle_velocity, mut ai) = paddle_query.single_mut();
+	let ball_transform = ball_query.single();
+	
+	let distance = ball_transform.translation.y - paddle_transform.translation.y;
+	let velocity_goal = distance / time.delta_seconds();
+	paddle_velocity.y = velocity_goal.clamp(-ai.max_velocity, ai.max_velocity);
 }
 
 fn update_text_with_scoreboard(
