@@ -23,7 +23,7 @@ use bevy_vello::{prelude::*, VelloPlugin};
 #[non_exhaustive]
 struct ZLAYER;
 impl ZLAYER {
-	pub const SPACE: f32  = 0.0;
+	pub const FRAME: f32  = 0.0;
     pub const TEXT: f32   = 1.0;
     pub const MAIN: f32   = 2.0;
     pub const BALL: f32   = 3.0;
@@ -57,12 +57,12 @@ const BALL_SIZE: Vec2              = Vec2::new(10.0, 10.0);
 const BALL_SPEED: f32              = 400.0;
 
 const DEACCELERATION_DISTANCE: f32      = 50.0;
-const SPACE_SIZE: Vec2                  = Vec2::new(640.0, 480.0);
+const FRAME_SIZE: Vec2                  = Vec2::new(640.0, 480.0);
 
-const LEFT_WALL: f32   = -SPACE_SIZE.x / 2.0;
-const RIGHT_WALL: f32  =  SPACE_SIZE.x / 2.0;
-const BOTTOM_WALL: f32 = -SPACE_SIZE.y / 2.0;
-const TOP_WALL: f32    =  SPACE_SIZE.y / 2.0;
+const LEFT_WALL: f32   = -FRAME_SIZE.x / 2.0;
+const RIGHT_WALL: f32  =  FRAME_SIZE.x / 2.0;
+const BOTTOM_WALL: f32 = -FRAME_SIZE.y / 2.0;
+const TOP_WALL: f32    =  FRAME_SIZE.y / 2.0;
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
 const PADDLE_COLOR: Color     = Color::RED;
@@ -231,7 +231,7 @@ fn world_setup(
 	commands.spawn((
 		Camera2dBundle {
 			projection: OrthographicProjection {
-				scaling_mode: ScalingMode::AutoMin { min_width: SPACE_SIZE.x, min_height: SPACE_SIZE.y},
+				scaling_mode: ScalingMode::AutoMin { min_width: FRAME_SIZE.x, min_height: FRAME_SIZE.y},
 				..default()
 			},
 			camera: Camera {
@@ -332,7 +332,7 @@ fn world_setup(
 	commands.spawn(VelloAssetBundle {
 		vector: asset_server.load("embedded://textures/frame.svg"),
 		debug_visualizations: DebugVisualizations::Hidden,
-		transform: Transform::from_xyz(0.0, 0.0, ZLAYER::SPACE).with_scale(Vec3::splat(1.0)),
+		transform: Transform::from_xyz(0.0, 0.0, ZLAYER::FRAME).with_scale(Vec3::splat(1.0)),
 		..default()
 	});
 
