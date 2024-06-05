@@ -38,15 +38,12 @@ impl ZLAYER {
 
 const SIN_OF_45: f32 = 0.70710678118654752440084436210485;
 
-// These constants are defined in `Transform` units.
-// Using the default 2D camera they correspond 1:1 with screen pixels.
 const PADDLE_SIZE: Vec2        = Vec2::new(10.0, 90.0);
 const PADDLE_OFFSET: f32       = 300.0;
 const PADDLE_SPEED: f32        = 500.0;
 const PADDLE_ACCELERATION: f32 = PADDLE_SPEED * 4.0;
 const PADDLE_PADDING: f32      = 10.0; // How close can the paddle get to the wall
 
-// We set the z-value of the ball to 1 so it renders on top in the case of overlapping sprites.
 const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, 0.0, ZLAYER::BALL);
 const BALL_SIZE: Vec2              = Vec2::new(10.0, 10.0);
 const BALL_SPEED: f32              = 400.0;
@@ -81,8 +78,6 @@ const GAME_OVER_FONT_SIZE: f32    = 60.0 * TEXT_RESOLUTION;
 const WIN_CONDITIONS: u32 = 7;
 
 const INITIAL_AI_MAX_VELOCITY: f32 = 500.0;
-
-// use bevy_editor_pls::prelude::*;
 
 fn main() {
 	let mut app = App::new();
@@ -548,9 +543,6 @@ fn check_win_conditions(scoreboard: Res<Scoreboard>) -> GameplayState {
 		true  => GameplayState::GameOver,
 		false => GameplayState::NextSet,
 	}
-	// let (mut ball_velocity, mut ball_visibility) = ball_query.single_mut();
-	// *ball_visibility = Visibility::Hidden;
-	// ball_velocity.0 = Vec2::ZERO;
 }
 
 fn switch_to_next_state(
