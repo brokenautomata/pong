@@ -382,11 +382,11 @@ fn ai_control(
 	ball_query: Query<&Transform, With<Ball>>,
 	time: Res<Time>,
 ) {
-	let (paddle_transform, mut paddle_velocity) = paddle_query.single_mut();
+	let (transform, mut velocity) = paddle_query.single_mut();
 	let ball_transform = ball_query.single();
 	
-	let distance = ball_transform.translation.y - paddle_transform.translation.y;
-	paddle_velocity.y = distance / time.delta_seconds();
+	let delta_distance = ball_transform.translation.y - transform.translation.y;
+	velocity.y = delta_distance / time.delta_seconds();
 }
 
 fn limit_velocity(
