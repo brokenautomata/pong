@@ -169,7 +169,7 @@ fn main() {
 #[derive(Component)] struct AdaptiveResolution;
 #[derive(Component)] struct Player;
 #[derive(Component)] struct Ai{ max_velocity: f32 }
-#[derive(Component)] struct Paragraph { when_visible: GameplayState }
+#[derive(Component, Deref, DerefMut)] struct Paragraph { when_visible: GameplayState }
 
 // Events
 #[derive(Event, Default)] struct CollisionEvent;
