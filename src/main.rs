@@ -8,6 +8,7 @@ use bevy::core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping};
 use bevy::ecs::system::SystemId;
 use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume, };
 use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
+use bevy::window::{PresentMode, WindowMode, WindowTheme};
 
 // import custom
 use bevy_embedded_assets::EmbeddedAssetPlugin;
@@ -85,7 +86,16 @@ fn main() {
 	
 	// Plugins
 	app.add_plugins((
-		DefaultPlugins,
+		DefaultPlugins.set(WindowPlugin {
+			primary_window: Some(Window {
+				resolution: FRAME_SIZE.into(),
+				present_mode: PresentMode::AutoVsync,
+				window_theme: Some(WindowTheme::Dark),
+				mode: WindowMode::Fullscreen,
+				..default()
+				}),
+			..default()
+			}),
 		EmbeddedAssetPlugin::default(),
 		VelloPlugin,
 	));
