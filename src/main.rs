@@ -18,6 +18,7 @@ use bevy_vello::{prelude::*, VelloPlugin};
 struct ZLAYER;
 impl ZLAYER {
 	pub const FRAME: f32  = 0.0;
+	pub const SCORE: f32  = 0.5;
 	pub const TEXT: f32   = 1.0;
 	pub const MAIN: f32   = 2.0;
 	pub const BALL: f32   = 3.0;
@@ -74,7 +75,7 @@ const TEXT_RESOLUTION: f32        = 4.0;
 const GLOBAL_TEXT_SCALE: f32      = 1.0 / TEXT_RESOLUTION;
 const INSTRUCTIONS_FONT_SIZE: f32 = 20.0 * TEXT_RESOLUTION;
 const START_FONT_SIZE: f32        = 20.0 * TEXT_RESOLUTION;
-const SCOREBOARD_FONT_SIZE: f32   = 100.0 * TEXT_RESOLUTION;
+const SCORE_FONT_SIZE: f32        = 300.0 * TEXT_RESOLUTION;
 const GAME_OVER_FONT_SIZE: f32    = 60.0 * TEXT_RESOLUTION;
 
 const WIN_CONDITIONS: u32 = 7;
@@ -109,9 +110,13 @@ fn main() {
 
 	// Transitions
 	app.add_systems(OnEnter(GameplayState::Active), start_game_set)
-		.add_systems(OnExit(GameplayState::Active), reset_game_set)
-		.add_systems(OnEnter(GameplayState::GameOver), hide_ball)
-		.add_systems(OnExit(GameplayState::GameOver), (reset_scoreboard, unhide_ball));
+		.add_systems(OnExit(GameplayState::Active), (reset_game_set, update_text_with_scoreboard))
+		.add_systems(OnEnter(GameplayState::GameOver), (hide_ball, hide_scoreboard))
+		.add_systems(OnExit(GameplayState::GameOver), (
+			(reset_scoreboard, update_text_with_scoreboard).chain(),
+			unhide_ball,
+			unhide_scoreboard,
+		));
 
 	// Events
 	app.add_event::<CollisionEvent>();
@@ -152,7 +157,6 @@ fn main() {
 		(
 		wait_for_response          .run_if(in_state(GameplayState::Instructions)),
 		tick_timer                 .run_if(in_state(GameplayState::Start)),
-		update_text_with_scoreboard.run_if(in_state(GameplayState::Active)),
 		tick_timer                 .run_if(in_state(GameplayState::NextSet)),
 		wait_for_response          .run_if(in_state(GameplayState::GameOver)),
 		));
@@ -296,7 +300,6 @@ fn world_setup(
 	));
 
 	// Paragraphs
-	let font_nums   = asset_server.load("embedded://fonts/basicallyamono-bold.otf");
 	let font_bold   = asset_server.load("embedded://fonts/sundaymasthead.otf");
 	let font_medium = asset_server.load("embedded://fonts/openinghourssans.otf");
 	commands.spawn(ParagraphBundle::new(
@@ -318,17 +321,6 @@ fn world_setup(
 			color: BASIC_TEXT_COLOR })
 			.with_justify(JustifyText::Center),
 		));
-	commands.spawn((
-		ScoreboardUi,
-		ParagraphBundle::new(
-			GameplayState::Active,
-			Vec2::new(0.0, 0.0),
-			Text::from_section("", TextStyle {
-				font: font_nums,
-				font_size: SCOREBOARD_FONT_SIZE,
-				color: SCORE_TEXT_COLOR })
-				.with_justify(JustifyText::Center),
-		)));
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::GameOver,
 		Vec2::new(-7.0, 0.0),
@@ -338,6 +330,22 @@ fn world_setup(
 			color: GAME_OVER_TEXT_COLOR })
 			.with_justify(JustifyText::Center),
 		));
+
+	// Scoreboard
+	commands.spawn((
+		ScoreboardUi,
+		Text2dBundle {
+			text:
+				Text::from_section("0 0", TextStyle {
+				font: asset_server.load("embedded://fonts/basicallyamono-bold.otf"),
+				font_size: SCORE_FONT_SIZE,
+				color: SCORE_TEXT_COLOR })
+				.with_justify(JustifyText::Center),
+			transform:
+				Transform::from_xyz(0.0, 0.0, ZLAYER::SCORE)
+				.with_scale(Vec3::splat(GLOBAL_TEXT_SCALE)),
+			..default()
+		}));
 
 	// Frame
 	commands.spawn(VelloAssetBundle {
@@ -647,6 +655,20 @@ fn unhide_ball(
 ) {
 	let mut ball_visibility = ball_query.single_mut();
 	*ball_visibility = Visibility::Inherited;
+}
+
+fn hide_scoreboard(
+	mut query: Query<&mut Visibility, With<ScoreboardUi>>,
+) {
+	let mut visibility = query.single_mut();
+	*visibility = Visibility::Hidden;
+}
+
+fn unhide_scoreboard(
+	mut query: Query<&mut Visibility, With<ScoreboardUi>>,
+) {
+	let mut visibility = query.single_mut();
+	*visibility = Visibility::Inherited;
 }
 
 fn toggle_window_mode(input: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut Window>) {
