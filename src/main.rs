@@ -1,22 +1,15 @@
+// import std
 use std::time::Duration;
-use bevy::{
-	prelude::*,
-	render::camera::ScalingMode,
-	core_pipeline::{
-		bloom::BloomSettings,
-		tonemapping::Tonemapping,
-	},
-	ecs::system::SystemId,
-	math::bounding::{
-		Aabb2d,
-		BoundingVolume,
-		IntersectsVolume,
-	},
-	sprite::{
-		MaterialMesh2dBundle,
-		Mesh2dHandle,
-	},
-};
+
+// import bevy
+use bevy::prelude::*;
+use bevy::render::camera::ScalingMode;
+use bevy::core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping};
+use bevy::ecs::system::SystemId;
+use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume, };
+use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
+
+// import custom
 use bevy_embedded_assets::EmbeddedAssetPlugin;
 use bevy_vello::{prelude::*, VelloPlugin};
 
