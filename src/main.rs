@@ -66,7 +66,6 @@ const GAME_OVER_TEXT_COLOR: Color = Color::WHITE;
 
 const START_DELAY: Duration     = Duration::from_secs(3);
 const NEXT_SET_DELAY: Duration  = Duration::from_secs(1);
-const GAME_OVER_DELAY: Duration = Duration::from_secs(3);
 
 const TEXT_RESOLUTION: f32        = 4.0;
 const GLOBAL_TEXT_SCALE: f32      = 1.0 / TEXT_RESOLUTION;
@@ -564,7 +563,6 @@ fn switch_to_next_state(
 	match state {
 		GameplayState::Start    => reset_timer(timer, START_DELAY),
 		GameplayState::NextSet  => reset_timer(timer, NEXT_SET_DELAY),
-		GameplayState::GameOver => reset_timer(timer, GAME_OVER_DELAY),
 		_                       => (),
 	};
 
