@@ -122,6 +122,9 @@ fn main() {
 	// Systems: startup
 	app.add_systems(Startup, world_setup);
 
+	// System: window
+	app.add_systems(Update, toggle_window_mode);
+
 	// System: update
 	app.add_systems(FixedUpdate,
 		(
@@ -626,4 +629,18 @@ fn unhide_ball(
 ) {
 	let mut ball_visibility = ball_query.single_mut();
 	*ball_visibility = Visibility::Inherited;
+}
+
+fn toggle_window_mode(input: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut Window>) {
+    if input.just_pressed(KeyCode::F11) {
+        let mut window = windows.single_mut();
+
+		window.mode = if matches!(window.mode, WindowMode::Fullscreen) {
+			WindowMode::Windowed
+		} else {
+			WindowMode::Fullscreen
+		};
+
+        info!("WINDOW_MODE: {:?}", window.mode);
+    }
 }
