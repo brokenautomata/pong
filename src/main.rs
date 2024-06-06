@@ -128,7 +128,7 @@ fn main() {
 	app.add_systems(Update, toggle_window_mode);
 
 	// System: update
-	app.add_systems(FixedUpdate,
+	app.add_systems(Update,
 		(
 		(
 		player_control,
@@ -381,6 +381,8 @@ fn ai_control(
 	ball_query: Query<&Transform, With<Ball>>,
 	time: Res<Time>,
 ) {
+	if time.delta_seconds() == 0.0 { return }
+
 	let (transform, mut velocity) = paddle_query.single_mut();
 	let ball_transform = ball_query.single();
 	
