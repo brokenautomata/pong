@@ -331,8 +331,7 @@ fn world_setup(
 			TextStyle {
 				font: font_medium.clone(),
 				font_size: INSTRUCTIONS_FONT_SIZE,
-				color: BASIC_TEXT_COLOR })
-			.with_justify(JustifyText::Center),
+				color: BASIC_TEXT_COLOR }),
 		));
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::Start,
@@ -340,8 +339,7 @@ fn world_setup(
 		Text::from_section("Be ready!", TextStyle {
 			font: font_medium,
 			font_size: START_FONT_SIZE,
-			color: BASIC_TEXT_COLOR })
-			.with_justify(JustifyText::Center),
+			color: BASIC_TEXT_COLOR }),
 		));
 	commands.spawn((
 		GameOverUi,
@@ -351,8 +349,7 @@ fn world_setup(
 			Text::from_section("", TextStyle {
 				font: font_bold,
 				font_size: GAME_OVER_FONT_SIZE,
-				color: BASIC_TEXT_COLOR })
-				.with_justify(JustifyText::Center),
+				color: BASIC_TEXT_COLOR }),
 		)));
 
 	// Scoreboard
@@ -363,8 +360,7 @@ fn world_setup(
 				Text::from_section("0 0", TextStyle {
 				font: asset_server.load("embedded://fonts/basicallyamono-bold.otf"),
 				font_size: SCORE_FONT_SIZE,
-				color: SCORE_TEXT_COLOR })
-				.with_justify(JustifyText::Center),
+				color: SCORE_TEXT_COLOR }),
 			transform:
 				Transform::from_xyz(0.0, 0.0, ZLAYER::SCORE)
 				.with_scale(Vec3::splat(GLOBAL_TEXT_SCALE)),
