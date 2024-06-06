@@ -242,10 +242,10 @@ impl ParagraphBundle {
 }
 
 // Resources
-#[derive(Resource)] struct NextStateSystem(SystemId);
-#[derive(Resource)] struct StateTimer(Timer);
+#[derive(Resource, Deref, DerefMut)] struct NextStateSystem(SystemId);
+#[derive(Resource, Deref, DerefMut)] struct StateTimer(Timer);
 #[derive(Resource)] struct Scoreboard { score_left: u32, score_right: u32 }
-#[derive(Resource)] struct CollisionSound(Handle<AudioSource>);
+#[derive(Resource, Deref, DerefMut)] struct CollisionSound(Handle<AudioSource>);
 
 fn world_setup(
 	mut commands: Commands,
@@ -571,7 +571,7 @@ fn on_collision_actions(
 	
 	// Play sound
 	commands.spawn(AudioBundle {
-		source: sound.0.clone(),
+		source: sound.clone(),
 		settings: PlaybackSettings::DESPAWN,
 	});
 
@@ -627,8 +627,8 @@ fn reset_timer(
 	mut timer: ResMut<StateTimer>,
 	duration: Duration,
 ) {
-	timer.0.set_duration(duration);
-	timer.0.reset();
+	timer.set_duration(duration);
+	timer.reset();
 }
 
 fn tick_timer(
@@ -637,8 +637,8 @@ fn tick_timer(
 	mut timer: ResMut<StateTimer>,
 	mut commands: Commands,
 ) {
-	timer.0.tick(time.delta());
-	if timer.0.just_finished()
+	timer.tick(time.delta());
+	if timer.just_finished()
 	{
 		commands.run_system(state_switcher.0);
 	}
