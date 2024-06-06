@@ -11,6 +11,7 @@ use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume, };
 use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
 use bevy::window::{PresentMode, WindowMode, WindowTheme};
 use bevy::app::AppExit;
+use bevy::audio::Volume;
 
 // import custom
 use bevy_embedded_assets::EmbeddedAssetPlugin;
@@ -93,6 +94,8 @@ const KEYCODES_PADDLE_RIGHT: [KeyCode; 4] = [KeyCode::ArrowUp,  KeyCode::ArrowRi
 const KEYCODES_PADDLE_LEFT: [KeyCode; 4]  = [KeyCode::ArrowDown, KeyCode::ArrowLeft, KeyCode::KeyS, KeyCode::KeyA];
 const KEYCODE_EXIT: KeyCode               = KeyCode::Escape;
 const KEYCODE_FULLSCREEN: KeyCode         = KeyCode::F11;
+const KEYCODE_VOLUME_UP: KeyCode          = KeyCode::F10;
+const KEYCODE_VOLUME_DOWN: KeyCode        = KeyCode::F9;
 
 fn main() {
 	let mut app = App::new();
@@ -142,6 +145,7 @@ fn main() {
 	// Resources
 	app.insert_resource(Scoreboard { score_left: 0, score_right: 0 })
 		.insert_resource(ClearColor(BACKGROUND_COLOR))
+		.insert_resource(GlobalVolume(Volume::default()))
 		.insert_resource(ExitTimer(Timer::new(HOLD_TO_EXIT, TimerMode::Once)))
 		.insert_resource(StateTimer(Timer::default()));
 
@@ -182,7 +186,7 @@ fn main() {
 		));
 
 	// Systems: other
-	app.add_systems(Update, exit_on_esc);
+	app.add_systems(Update, (exit_on_esc, volume_control));
 
 	app.run();
 }
@@ -262,6 +266,7 @@ impl ParagraphBundle {
 #[derive(Resource, Deref, DerefMut)] struct ExitTimer(Timer);
 #[derive(Resource)] struct Scoreboard { score_left: u32, score_right: u32 }
 #[derive(Resource, Deref, DerefMut)] struct CollisionSound(Handle<AudioSource>);
+#[derive(Resource, Deref, DerefMut)] struct GlobalVolume(Volume);
 
 fn world_setup(
 	mut commands: Commands,
@@ -609,6 +614,7 @@ fn on_collision_actions(
 	mut collision_events: EventReader<CollisionEvent>,
 	mut query: Query<(&mut Velocity, &mut MaxSpeed), With<Ball>>,
 	sound: Res<CollisionSound>,
+	volume: Res<GlobalVolume>,
 ) {
 	// Play a sound once per frame if a collision occurred.
 	if collision_events.is_empty() { return }
@@ -616,7 +622,7 @@ fn on_collision_actions(
 	// Play sound
 	commands.spawn(AudioBundle {
 		source: sound.clone(),
-		settings: PlaybackSettings::DESPAWN,
+		settings: PlaybackSettings::DESPAWN.with_volume(volume.0),
 	});
 
 	// Increase speed
@@ -816,4 +822,18 @@ fn exit_on_esc(
 		timer.tick(time.delta());
 		if timer.just_finished() { exit.send(AppExit); }
 	}
+}
+
+fn volume_control(
+    input: Res<ButtonInput<KeyCode>>,
+	mut volume: ResMut<GlobalVolume>,
+) {
+	let mut delta_volume = 0.0;
+    
+	if input.just_pressed(KEYCODE_VOLUME_UP)   { delta_volume =  0.1 }
+	if input.just_pressed(KEYCODE_VOLUME_DOWN) { delta_volume = -0.1 }
+	if delta_volume == 0.0 { return }
+	
+	let set_volume = (volume.get() + delta_volume).clamp(0.0, 1.0);
+	volume.0 = Volume::new(set_volume);
 }
