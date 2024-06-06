@@ -4,7 +4,8 @@ use std::time::Duration;
 // import bevy
 use bevy::prelude::*;
 use bevy::render::camera::ScalingMode;
-use bevy::core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping};
+use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::core_pipeline::bloom::{BloomSettings, BloomPrefilterSettings, BloomCompositeMode};
 use bevy::ecs::system::SystemId;
 use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume, };
 use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
@@ -268,7 +269,17 @@ fn world_setup(
 			transform: Transform::from_xyz(0.0, 0.0, ZLAYER::CAMERA),
 			..default()
 		},
-		BloomSettings::default(), // Enable bloom for the camera
+		BloomSettings {
+			intensity: 0.15,
+			low_frequency_boost: 0.7,
+			low_frequency_boost_curvature: 0.95,
+			high_pass_frequency: 1.0,
+			prefilter_settings: BloomPrefilterSettings {
+				threshold: 0.6,
+				threshold_softness: 0.2,
+			},
+			composite_mode: BloomCompositeMode::Additive,
+		},
 	));
 
 	// Sound
