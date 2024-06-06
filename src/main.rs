@@ -725,7 +725,10 @@ fn update_game_over(
 	
 }
 
-fn toggle_window_mode(input: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut Window>) {
+fn toggle_window_mode(
+	input: Res<ButtonInput<KeyCode>>,
+	mut windows: Query<&mut Window>
+) {
 	if input.just_pressed(KeyCode::F11) {
 		let mut window = windows.single_mut();
 
