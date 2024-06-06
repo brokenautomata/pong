@@ -58,12 +58,16 @@ const TOP_WALL: f32    =  FRAME_SIZE.y / 2.0 - WALL_THICKNESS;
 
 const WALL_THICKNESS: f32         = 6.0;
 
+const RED_COLOR: Color            = Color::rgb(2.0, 0.0, 0.0);
+const GOLD_COLOR: Color           = Color::rgb(2.0, 1.68, 0.0);
+
 const BACKGROUND_COLOR: Color     = Color::BLACK;
-const PADDLE_COLOR: Color         = Color::RED;
-const BALL_COLOR: Color           = Color::RED;
+const PADDLE_COLOR: Color         = RED_COLOR;
+const BALL_COLOR: Color           = RED_COLOR;
 const BASIC_TEXT_COLOR: Color     = Color::WHITE;
 const SCORE_TEXT_COLOR: Color     = Color::DARK_GRAY;
-const GAME_OVER_TEXT_COLOR: Color = Color::WHITE;
+const VICTORY_TEXT_COLOR: Color   = GOLD_COLOR;
+const DEFEAT_TEXT_COLOR: Color    = RED_COLOR;
 
 const START_DELAY: Duration     = Duration::from_secs(3);
 const NEXT_SET_DELAY: Duration  = Duration::from_secs(1);
@@ -107,7 +111,11 @@ fn main() {
 	// Transitions
 	app.add_systems(OnEnter(GameplayState::Active), start_game_set)
 		.add_systems(OnExit(GameplayState::Active), (reset_game_set, update_text_with_scoreboard))
-		.add_systems(OnEnter(GameplayState::GameOver), (hide_ball, hide_scoreboard))
+		.add_systems(OnEnter(GameplayState::GameOver), (
+			hide_ball,
+			hide_scoreboard,
+			update_game_over,
+		))
 		.add_systems(OnExit(GameplayState::GameOver), (
 			(reset_scoreboard, update_text_with_scoreboard).chain(),
 			unhide_ball,
@@ -171,6 +179,7 @@ fn main() {
 #[derive(Component, Deref, DerefMut)] struct MaxSpeed(f32);
 #[derive(Component)] struct Collider;
 #[derive(Component)] struct ScoreboardUi;
+#[derive(Component)] struct GameOverUi;
 #[derive(Component)] struct AdaptiveResolution;
 #[derive(Component)] struct Player;
 #[derive(Component)] struct Ai;
@@ -323,15 +332,17 @@ fn world_setup(
 			color: BASIC_TEXT_COLOR })
 			.with_justify(JustifyText::Center),
 		));
-	commands.spawn(ParagraphBundle::new(
-		GameplayState::GameOver,
-		Vec2::new(-7.0, 0.0),
-		Text::from_section("GAME OVER", TextStyle {
-			font: font_bold,
-			font_size: GAME_OVER_FONT_SIZE,
-			color: GAME_OVER_TEXT_COLOR })
-			.with_justify(JustifyText::Center),
-		));
+	commands.spawn((
+		GameOverUi,
+		ParagraphBundle::new(
+			GameplayState::GameOver,
+			Vec2::new(0.0, 0.0),
+			Text::from_section("", TextStyle {
+				font: font_bold,
+				font_size: GAME_OVER_FONT_SIZE,
+				color: BASIC_TEXT_COLOR })
+				.with_justify(JustifyText::Center),
+		)));
 
 	// Scoreboard
 	commands.spawn((
@@ -684,6 +695,23 @@ fn unhide_scoreboard(
 ) {
 	let mut visibility = query.single_mut();
 	*visibility = Visibility::Inherited;
+}
+
+fn update_game_over(
+	scoreboard: Res<Scoreboard>,
+	mut query: Query<&mut Text, With<GameOverUi>>
+) {
+	let mut text = query.single_mut();
+	let section = text.sections.first_mut().unwrap();
+	
+	if scoreboard.score_right >= WIN_CONDITIONS {
+		section.style.color = VICTORY_TEXT_COLOR;
+		section.value = "VICTORY".into();
+	} else {
+		section.style.color = DEFEAT_TEXT_COLOR;
+		section.value = "DEFEAT".into();
+	}
+	
 }
 
 fn toggle_window_mode(input: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut Window>) {
