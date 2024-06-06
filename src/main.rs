@@ -78,6 +78,7 @@ const HOLD_TO_EXIT: Duration    = Duration::from_secs(2);
 const TEXT_RESOLUTION: f32        = 4.0;
 const GLOBAL_TEXT_SCALE: f32      = 1.0 / TEXT_RESOLUTION;
 const INSTRUCTIONS_FONT_SIZE: f32 = TEXT_RESOLUTION * 20.0;
+const INSTR_ICONS_FONT_SIZE: f32  = TEXT_RESOLUTION * 23.0;
 const START_FONT_SIZE: f32        = TEXT_RESOLUTION * 20.0;
 const SCORE_FONT_SIZE: f32        = TEXT_RESOLUTION * 300.0;
 const GAME_OVER_FONT_SIZE: f32    = TEXT_RESOLUTION * 60.0;
@@ -118,7 +119,11 @@ fn main() {
 	app.insert_resource(NextStateSystem(state_switcher));
 
 	// Transitions
-	app.add_systems(OnEnter(GameplayState::Active), start_game_set)
+	app.add_systems(OnExit(GameplayState::Instructions), (
+		unhide_ball,
+		unhide_scoreboard,
+		))
+		.add_systems(OnEnter(GameplayState::Active), start_game_set)
 		.add_systems(OnExit(GameplayState::Active), (reset_game_set, update_text_with_scoreboard))
 		.add_systems(OnEnter(GameplayState::GameOver), (
 			hide_ball,
@@ -304,6 +309,7 @@ fn world_setup(
 			mesh: Mesh2dHandle(meshes.add(Rectangle::from_size(BALL_SIZE))),
 			material: materials.add(BALL_COLOR),
 			transform: Transform::from_translation(BALL_STARTING_POSITION),
+			visibility: Visibility::Hidden,
 			..default()
 		},
 	));
@@ -333,16 +339,28 @@ fn world_setup(
 	));
 
 	// Paragraphs
+	let font_icons: Handle<Font> = asset_server.load("embedded://fonts/promptfont.otf");
 	let font_bold   = asset_server.load("embedded://fonts/sundaymasthead.otf");
 	let font_medium = asset_server.load("embedded://fonts/openinghourssans.otf");
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::Instructions,
-		Vec2::new(0.0, -160.0),
-		Text::from_section("🡄🡅🡇🡆/wasd move paddle\nEnter space to start game...",
+		Vec2::new(-80.0, 0.0),
+		Text::from_section("Movement\nSound\nFullscreen\nExit\n\nAccept",
 			TextStyle {
 				font: font_medium.clone(),
 				font_size: INSTRUCTIONS_FONT_SIZE,
-				color: BASIC_TEXT_COLOR }),
+				color: BASIC_TEXT_COLOR })
+				.with_justify(JustifyText::Right),
+		));
+	commands.spawn(ParagraphBundle::new(
+		GameplayState::Instructions,
+		Vec2::new(50.0, 0.0),
+		Text::from_section("⏶⏷\n⑨⑩\n⑪\n␯\n\n␮",
+			TextStyle {
+				font: font_icons,
+				font_size: INSTR_ICONS_FONT_SIZE,
+				color: BASIC_TEXT_COLOR })
+				.with_justify(JustifyText::Right),
 		));
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::Start,
@@ -375,6 +393,8 @@ fn world_setup(
 			transform:
 				Transform::from_xyz(0.0, 0.0, ZLAYER::SCORE)
 				.with_scale(Vec3::splat(GLOBAL_TEXT_SCALE)),
+			visibility:
+				Visibility::Hidden,
 			..default()
 		}));
 
