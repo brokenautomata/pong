@@ -10,6 +10,7 @@ use bevy::ecs::system::SystemId;
 use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume, };
 use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
 use bevy::window::{PresentMode, WindowMode, WindowTheme};
+use bevy::app::AppExit;
 
 // import custom
 use bevy_embedded_assets::EmbeddedAssetPlugin;
@@ -72,6 +73,7 @@ const DEFEAT_TEXT_COLOR: Color    = RED_COLOR;
 
 const START_DELAY: Duration     = Duration::from_secs(3);
 const NEXT_SET_DELAY: Duration  = Duration::from_secs(1);
+const HOLD_TO_EXIT: Duration    = Duration::from_secs(2);
 
 const TEXT_RESOLUTION: f32        = 4.0;
 const GLOBAL_TEXT_SCALE: f32      = 1.0 / TEXT_RESOLUTION;
@@ -129,6 +131,7 @@ fn main() {
 	// Resources
 	app.insert_resource(Scoreboard { score_left: 0, score_right: 0 })
 		.insert_resource(ClearColor(BACKGROUND_COLOR))
+		.insert_resource(ExitTimer(Timer::new(HOLD_TO_EXIT, TimerMode::Once)))
 		.insert_resource(StateTimer(Timer::default()));
 
 	// Systems: startup
@@ -167,8 +170,8 @@ fn main() {
 		wait_for_response          .run_if(in_state(GameplayState::GameOver)),
 		));
 
-	// Systems: temporarely
-	app.add_systems(Update, bevy::window::close_on_esc);
+	// Systems: other
+	app.add_systems(Update, exit_on_esc);
 
 	app.run();
 }
@@ -181,6 +184,7 @@ fn main() {
 #[derive(Component)] struct Collider;
 #[derive(Component)] struct ScoreboardUi;
 #[derive(Component)] struct GameOverUi;
+#[derive(Component)] struct ExitUi;
 #[derive(Component)] struct AdaptiveResolution;
 #[derive(Component)] struct Player;
 #[derive(Component)] struct Ai;
@@ -244,6 +248,7 @@ impl ParagraphBundle {
 // Resources
 #[derive(Resource, Deref, DerefMut)] struct NextStateSystem(SystemId);
 #[derive(Resource, Deref, DerefMut)] struct StateTimer(Timer);
+#[derive(Resource, Deref, DerefMut)] struct ExitTimer(Timer);
 #[derive(Resource)] struct Scoreboard { score_left: u32, score_right: u32 }
 #[derive(Resource, Deref, DerefMut)] struct CollisionSound(Handle<AudioSource>);
 
@@ -337,7 +342,7 @@ fn world_setup(
 		GameplayState::Start,
 		Vec2::new(0.0, -160.0),
 		Text::from_section("Be ready!", TextStyle {
-			font: font_medium,
+			font: font_medium.clone(),
 			font_size: START_FONT_SIZE,
 			color: BASIC_TEXT_COLOR }),
 		));
@@ -364,6 +369,23 @@ fn world_setup(
 			transform:
 				Transform::from_xyz(0.0, 0.0, ZLAYER::SCORE)
 				.with_scale(Vec3::splat(GLOBAL_TEXT_SCALE)),
+			..default()
+		}));
+
+	// Exit UI
+	commands.spawn((
+		ExitUi,
+		Text2dBundle {
+			text:
+				Text::from_section("Holding ESC to exit", TextStyle {
+				font: font_medium,
+				font_size: INSTRUCTIONS_FONT_SIZE,
+				color: BASIC_TEXT_COLOR }),
+			transform:
+				Transform::from_xyz(-210.0, 205.0, ZLAYER::TEXT)
+				.with_scale(Vec3::splat(GLOBAL_TEXT_SCALE)),
+			visibility:
+				Visibility::Hidden,
 			..default()
 		}));
 
@@ -735,5 +757,37 @@ fn toggle_window_mode(
 		};
 
 		info!("WINDOW_MODE: {:?}", window.mode);
+	}
+}
+
+fn exit_on_esc(
+	mut exit: EventWriter<AppExit>,
+	mut exit_ui: Query<(&mut Visibility, &mut Text), With<ExitUi>>,
+	mut timer: ResMut<ExitTimer>,
+	
+	input: Res<ButtonInput<KeyCode>>,
+	time: Res<Time>,
+) {
+	let (mut visibility, mut text) = exit_ui.single_mut();
+	let color = &mut text.sections.first_mut().unwrap().style.color;
+	
+	if input.just_released(KeyCode::Escape)
+	{
+		*visibility = Visibility::Hidden;
+		timer.reset();
+		return;
+	}
+	if input.just_pressed(KeyCode::Escape)
+	{
+		*visibility = Visibility::Inherited;
+		color.set_a(0.0);
+	}
+	if input.pressed(KeyCode::Escape)
+	{
+		let bezier = CubicSegment::new_bezier((0.85, 0.06), (0.34, 0.69));
+		color.set_a(bezier.ease(timer.fraction()) * 3.0);
+		
+		timer.tick(time.delta());
+		if timer.just_finished() { exit.send(AppExit); }
 	}
 }
