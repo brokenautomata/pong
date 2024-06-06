@@ -48,6 +48,7 @@ const AI_STARTING_MAX_SPEED: f32 = 500.0;
 const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, 0.0, ZLAYER::BALL);
 const BALL_SIZE: Vec2              = Vec2::new(10.0, 10.0);
 const BALL_STARTING_SPEED: f32     = 400.0;
+const BALL_DELTA_SPEED: f32        = 10.0;
 
 const FRAME_SIZE: Vec2 = Vec2::new(640.0, 480.0);
 const LEFT_WALL: f32   = -FRAME_SIZE.x / 2.0;
@@ -139,7 +140,7 @@ fn main() {
 		bound_paddle,
 			(
 			check_ball_collisions,
-			on_collision_play_sound,
+			on_collision_actions,
 			)
 			.chain()
 			.run_if(in_state(GameplayState::Active)),
@@ -199,12 +200,14 @@ impl PaddleBundle {
 #[derive(Bundle)] struct BallBundle {
 	ball: Ball,
 	velocity: Velocity,
+	max_speed: MaxSpeed,
 }
 impl BallBundle {
 	fn new() -> Self {
 		Self {
 			ball: Ball,
 			velocity: Velocity(Vec2::ZERO),
+			max_speed: MaxSpeed(BALL_STARTING_SPEED),
 		}
 	}
 }
@@ -535,19 +538,27 @@ fn collide_with_collider(ball: Aabb2d, collider: Aabb2d) -> (Option<CollisionH>,
 	side
 }
 
-fn on_collision_play_sound(
+fn on_collision_actions(
 	mut commands: Commands,
 	mut collision_events: EventReader<CollisionEvent>,
+	mut query: Query<(&mut Velocity, &mut MaxSpeed), With<Ball>>,
 	sound: Res<CollisionSound>,
 ) {
 	// Play a sound once per frame if a collision occurred.
-	if !collision_events.is_empty() {
-		collision_events.clear();
-		commands.spawn(AudioBundle {
-			source: sound.0.clone(),
-			settings: PlaybackSettings::DESPAWN,
-		});
-	}
+	if collision_events.is_empty() { return }
+	
+	// Play sound
+	commands.spawn(AudioBundle {
+		source: sound.0.clone(),
+		settings: PlaybackSettings::DESPAWN,
+	});
+
+	// Increase speed
+	let (mut velocity, mut max_speed) = query.single_mut();
+	max_speed.0 += BALL_DELTA_SPEED;
+	velocity.0 = velocity.clamp_length_min(max_speed.0);
+
+	collision_events.clear();
 }
 
 fn check_win_conditions(scoreboard: Res<Scoreboard>) -> GameplayState {
@@ -638,11 +649,12 @@ fn start_game_set(
 }
 
 fn reset_game_set(
-	mut ball_query: Query<(&mut Velocity, &mut Transform), With<Ball>>,
+	mut ball_query: Query<(&mut Velocity, &mut MaxSpeed, &mut Transform), With<Ball>>,
 ) {
-	let (mut ball_velocity, mut ball_transform) = ball_query.single_mut();
+	let (mut ball_velocity, mut max_speed, mut ball_transform) = ball_query.single_mut();
 	
 	ball_velocity.0 = Vec2::ZERO;
+	max_speed.0 = BALL_STARTING_SPEED;
 	ball_transform.translation = BALL_STARTING_POSITION;
 }
 
