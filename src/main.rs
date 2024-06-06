@@ -87,6 +87,12 @@ const WIN_CONDITIONS: u32 = 3;
 const PROJECTION_WIDTH: f32  = FRAME_SIZE.x + 40.0;
 const PROJECTION_HEIGHT: f32 = FRAME_SIZE.y + 40.0;
 
+const KEYCODES_ACCEPT: [KeyCode; 2]       = [KeyCode::Space, KeyCode::Enter];
+const KEYCODES_PADDLE_RIGHT: [KeyCode; 4] = [KeyCode::ArrowUp,  KeyCode::ArrowRight, KeyCode::KeyW, KeyCode::KeyD];
+const KEYCODES_PADDLE_LEFT: [KeyCode; 4]  = [KeyCode::ArrowDown, KeyCode::ArrowLeft, KeyCode::KeyS, KeyCode::KeyA];
+const KEYCODE_EXIT: KeyCode               = KeyCode::Escape;
+const KEYCODE_FULLSCREEN: KeyCode         = KeyCode::F11;
+
 fn main() {
 	let mut app = App::new();
 	
@@ -332,7 +338,7 @@ fn world_setup(
 	commands.spawn(ParagraphBundle::new(
 		GameplayState::Instructions,
 		Vec2::new(0.0, -160.0),
-		Text::from_section("Use 'Up' and 'Down' arrows to move paddle\nEnter space to start game...",
+		Text::from_section("🡄🡅🡇🡆/wasd move paddle\nEnter space to start game...",
 			TextStyle {
 				font: font_medium.clone(),
 				font_size: INSTRUCTIONS_FONT_SIZE,
@@ -408,8 +414,8 @@ fn player_control(
 ) {
 	let mut velocity = query.single_mut();
 	
-	let is_up   = keyboard_input.pressed(KeyCode::ArrowUp);
-	let is_down = keyboard_input.pressed(KeyCode::ArrowDown);
+	let is_up   = keyboard_input.any_pressed(KEYCODES_PADDLE_RIGHT);
+	let is_down = keyboard_input.any_pressed(KEYCODES_PADDLE_LEFT);
 	let direction_y = f32::from(is_up) - f32::from(is_down);
 
 	let max_delta_vel_y  = PLAYER_ACCELERATION * time.delta_seconds();
@@ -667,7 +673,7 @@ fn wait_for_response(
 	state_switcher: Res<NextStateSystem>,
 	mut commands: Commands,
 ) {
-	if keyboard_input.pressed(KeyCode::Space)
+	if keyboard_input.any_just_pressed(KEYCODES_ACCEPT)
 	{
 		commands.run_system(state_switcher.0);
 	}
@@ -747,7 +753,7 @@ fn toggle_window_mode(
 	input: Res<ButtonInput<KeyCode>>,
 	mut windows: Query<&mut Window>
 ) {
-	if input.just_pressed(KeyCode::F11) {
+	if input.just_pressed(KEYCODE_FULLSCREEN) {
 		let mut window = windows.single_mut();
 
 		window.mode = if matches!(window.mode, WindowMode::Fullscreen) {
@@ -771,18 +777,18 @@ fn exit_on_esc(
 	let (mut visibility, mut text) = exit_ui.single_mut();
 	let color = &mut text.sections.first_mut().unwrap().style.color;
 	
-	if input.just_released(KeyCode::Escape)
+	if input.just_released(KEYCODE_EXIT)
 	{
 		*visibility = Visibility::Hidden;
 		timer.reset();
 		return;
 	}
-	if input.just_pressed(KeyCode::Escape)
+	if input.just_pressed(KEYCODE_EXIT)
 	{
 		*visibility = Visibility::Inherited;
 		color.set_a(0.0);
 	}
-	if input.pressed(KeyCode::Escape)
+	if input.pressed(KEYCODE_EXIT)
 	{
 		let bezier = CubicSegment::new_bezier((0.85, 0.06), (0.34, 0.69));
 		color.set_a(bezier.ease(timer.fraction()) * 3.0);
