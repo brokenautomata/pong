@@ -6,7 +6,6 @@ repository = "https://github.com/foxication/pong"
 
 [dependencies]
 bevy = { version = "0.13.2" }
-bevy_editor_pls = "0.8.1"
 bevy_embedded_assets = "0.10.2"
 bevy_vello = { version = "0.4.2", features = ["svg"] }
 
